@@ -1,0 +1,40 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: billing-service
+spec:
+  replicas: 1 # the outbox publisher assumes a single instance
+  selector:
+    matchLabels: { app: billing-service }
+  template:
+    metadata:
+      labels: { app: billing-service }
+    spec:
+      containers:
+        - name: billing-service
+          image: billing-service:local
+          imagePullPolicy: Never # loaded with: kind load docker-image billing-service:local --name billing
+          ports: [{ containerPort: 8080 }]
+          envFrom:
+            - configMapRef: { name: billing-config }
+            - secretRef: { name: billing-secret }
+          readinessProbe:
+            httpGet: { path: /health, port: 8080 }
+            initialDelaySeconds: 20
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: { path: /health, port: 8080 }
+            initialDelaySeconds: 60
+            periodSeconds: 10
+          resources:
+            requests: { memory: 384Mi, cpu: 100m }
+            limits: { memory: 768Mi }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: billing-service
+spec:
+  type: NodePort
+  selector: { app: billing-service }
+  ports: [{ port: 8080, targetPort: 8080, nodePort: 30080 }]

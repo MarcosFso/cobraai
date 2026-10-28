@@ -1,0 +1,47 @@
+name: notification-service
+
+on:
+  push:
+    paths: ["services/notification/**", ".github/workflows/notification.yml"]
+  pull_request:
+    paths: ["services/notification/**"]
+
+defaults:
+  run:
+    working-directory: services/notification
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: services/notification/package-lock.json
+      - run: npm ci
+      - name: Lint (type check)
+        run: npm run lint
+      - name: Test (Vitest)
+        run: npm test
+
+  image:
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - uses: docker/build-push-action@v6
+        with:
+          context: services/notification
+          push: true
+          tags: ghcr.io/${{ github.repository }}/notification-service:latest

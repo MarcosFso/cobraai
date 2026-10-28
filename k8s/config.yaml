@@ -1,0 +1,22 @@
+# Postgres, Redis, Kafka and Mailpit keep running in Docker Compose (docker compose up -d postgres redis kafka mailpit).
+# Pods reach them through the Docker host. On Linux, host.docker.internal may need extra setup (see README).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: billing-config
+data:
+  DB_URL: jdbc:postgresql://host.docker.internal:5432/billing
+  DB_USER: billing
+  KAFKA_BOOTSTRAP: host.docker.internal:29092
+  REDIS_URL: redis://host.docker.internal:6379/0
+  SMTP_HOST: host.docker.internal
+  SMTP_PORT: "1025"
+  CORS_ORIGINS: http://localhost:5173
+---
+# Demo-only credentials (same as docker-compose.yml). Use a real secret manager outside a local demo.
+apiVersion: v1
+kind: Secret
+metadata:
+  name: billing-secret
+stringData:
+  DB_PASSWORD: billing

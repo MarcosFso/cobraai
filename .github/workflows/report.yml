@@ -40,8 +40,10 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+      - id: repo
+        run: echo "name=${GITHUB_REPOSITORY,,}" >> "$GITHUB_OUTPUT" # image names must be lowercase
       - uses: docker/build-push-action@v6
         with:
           context: services/report
           push: true
-          tags: ghcr.io/${{ github.repository }}/report-service:latest
+          tags: ghcr.io/${{ steps.repo.outputs.name }}/report-service:latest

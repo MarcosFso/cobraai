@@ -35,8 +35,59 @@ export function formatDocument(digits: string): string {
   return digits;
 }
 
+/** "5511912345678" -> "(11) 91234-5678"; also masks what the user is typing. */
+export function formatPhone(value: string): string {
+  let digits = value.replace(/\D/g, '');
+  if (digits.startsWith('55') && digits.length > 11) digits = digits.slice(2);
+  digits = digits.slice(0, 11);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  const split = digits.length === 11 ? 7 : 6;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, split)}-${digits.slice(split)}`;
+}
+
 /** Today as YYYY-MM-DD in the user's calendar, for the due date input. */
 export function todayIso(): string {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+export function addDaysIso(isoDate: string, days: number): string {
+  const [y, m, d] = isoDate.split('-').map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d + days));
+  return date.toISOString().slice(0, 10);
+}
+
+/** Whole days from a to b (positive when b is later). */
+export function daysBetween(a: string, b: string): number {
+  const toUtc = (iso: string) => {
+    const [y, m, d] = iso.split('-').map(Number);
+    return Date.UTC(y, m - 1, d);
+  };
+  return Math.round((toUtc(b) - toUtc(a)) / 86_400_000);
+}
+
+/** "vence hoje", "vence em 5 dias", "venceu há 3 dias". */
+export function dueLabel(dueDate: string, today = todayIso()): string {
+  const diff = daysBetween(today, dueDate.slice(0, 10));
+  if (diff === 0) return 'vence hoje';
+  if (diff === 1) return 'vence amanhã';
+  if (diff > 1) return `vence em ${diff} dias`;
+  if (diff === -1) return 'venceu ontem';
+  return `venceu há ${-diff} dias`;
+}
+
+export function initials(name: string): string {
+  const parts = name.trim().split(/\s+/).filter(Boolean);
+  if (parts.length === 0) return '?';
+  const first = parts[0][0];
+  const last = parts.length > 1 ? parts[parts.length - 1][0] : '';
+  return (first + last).toUpperCase();
+}
+
+export function greeting(date = new Date()): string {
+  const hour = date.getHours();
+  if (hour < 12) return 'Bom dia';
+  if (hour < 18) return 'Boa tarde';
+  return 'Boa noite';
 }

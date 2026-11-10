@@ -1,75 +1,81 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState, type FormEvent } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { MessageCircle, Plus, Search, Users } from 'lucide-react';
+import { useState } from 'react';
 import { api } from '../api';
-import { formatDocument } from '../format';
+import { formatBrl, formatDocument, formatPhone } from '../format';
+import { whatsappLink } from '../whatsapp';
+import { Avatar, EmptyState, Skeleton } from './ui';
 
-export function CustomersPage() {
-  const [form, setForm] = useState({ name: '', document: '', email: '' });
-  const queryClient = useQueryClient();
+export function CustomersPage({ onNewCustomer }: { onNewCustomer: () => void }) {
+  const [search, setSearch] = useState('');
   const customers = useQuery({ queryKey: ['customers'], queryFn: api.customers });
-  const create = useMutation({
-    mutationFn: api.createCustomer,
-    onSuccess: () => {
-      setForm({ name: '', document: '', email: '' });
-      void queryClient.invalidateQueries({ queryKey: ['customers'] });
-    },
-  });
+  const invoices = useQuery({ queryKey: ['invoices'], queryFn: api.invoices });
 
-  const submit = (event: FormEvent) => {
-    event.preventDefault();
-    create.mutate(form);
-  };
+  // How much each customer still owes (open + overdue)
+  const owed = new Map<string, number>();
+  for (const invoice of invoices.data ?? []) {
+    if (invoice.status === 'OPEN' || invoice.status === 'OVERDUE') {
+      owed.set(invoice.customer_id, (owed.get(invoice.customer_id) ?? 0) + invoice.amount_cents);
+    }
+  }
+
+  const term = search.trim().toLowerCase();
+  const visible = (customers.data ?? []).filter((c) => !term || `${c.name} ${c.email} ${c.document}`.toLowerCase().includes(term));
 
   return (
     <>
-      <h1>Clientes</h1>
-      <form className="card" onSubmit={submit}>
-        <h2>Novo cliente</h2>
-        <div className="grid">
-          <label>
-            Nome
-            <input required maxLength={120} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} />
-          </label>
-          <label>
-            CPF ou CNPJ
-            <input required inputMode="numeric" placeholder="529.982.247-25" value={form.document} onChange={(e) => setForm({ ...form, document: e.target.value })} />
-          </label>
-          <label>
-            E-mail
-            <input required type="email" maxLength={160} value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
-          </label>
+      <div className="page-head">
+        <div>
+          <h1>Clientes</h1>
+          <p className="muted">Quem recebe as suas cobranças.</p>
         </div>
-        <button className="primary" disabled={create.isPending}>
-          Cadastrar
-        </button>
-        {create.isError && <p className="error">{(create.error as Error).message}</p>}
-        {create.isSuccess && <p className="ok">Cliente cadastrado.</p>}
-      </form>
+        <button className="btn primary" onClick={onNewCustomer}><Plus size={18} /> Novo cliente</button>
+      </div>
 
-      <section className="card">
-        <h2>Lista</h2>
-        <div className="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Nome</th>
-                <th>CPF/CNPJ</th>
-                <th>E-mail</th>
-              </tr>
-            </thead>
-            <tbody>
-              {customers.data?.map((customer) => (
-                <tr key={customer.id}>
-                  <td>{customer.name}</td>
-                  <td>{formatDocument(customer.document)}</td>
-                  <td>{customer.email}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {customers.data?.length === 0 && <p className="muted">Nenhum cliente ainda.</p>}
-      </section>
+      <div className="toolbar solo">
+        <label className="search">
+          <Search size={16} />
+          <input type="search" placeholder="Buscar por nome, e-mail ou documento" value={search} onChange={(e) => setSearch(e.target.value)} />
+        </label>
+      </div>
+
+      {customers.isLoading && <Skeleton height={160} />}
+      {customers.data && visible.length === 0 && (
+        <section className="panel">
+          <EmptyState
+            icon={<Users size={28} />}
+            title={customers.data.length === 0 ? 'Nenhum cliente ainda' : 'Nenhum cliente encontrado'}
+            hint={customers.data.length === 0 ? 'Cadastre o primeiro cliente para poder emitir cobranças.' : undefined}
+            action={customers.data.length === 0 ? <button className="btn primary" onClick={onNewCustomer}>Cadastrar cliente</button> : undefined}
+          />
+        </section>
+      )}
+
+      <div className="cards-grid">
+        {visible.map((customer) => {
+          const pending = owed.get(customer.id) ?? 0;
+          return (
+            <article key={customer.id} className="customer">
+              <Avatar name={customer.name} size={44} />
+              <div className="grow">
+                <strong>{customer.name}</strong>
+                <span className="muted">{formatDocument(customer.document)}</span>
+                <span className="muted ellipsis">{customer.email}</span>
+                {customer.phone && <span className="muted">{formatPhone(customer.phone)}</span>}
+              </div>
+              <div className="right">
+                <span className="muted small">A receber</span>
+                <strong className={pending > 0 ? '' : 'muted'}>{formatBrl(pending)}</strong>
+                {customer.phone && (
+                  <a className="icon-btn wa" href={whatsappLink(customer.phone, `Olá, ${customer.name.split(' ')[0]}! Tudo bem?`)} target="_blank" rel="noopener noreferrer" aria-label={`Conversar com ${customer.name} no WhatsApp`}>
+                    <MessageCircle size={17} />
+                  </a>
+                )}
+              </div>
+            </article>
+          );
+        })}
+      </div>
     </>
   );
 }

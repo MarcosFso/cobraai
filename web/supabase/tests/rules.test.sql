@@ -70,6 +70,12 @@ begin
     perform test.expect_error($q$select public.create_customer('X', '529.982.247-25', 'x@example.com')$q$, 'Já existe um cliente');
     perform test.expect_error($q$select public.create_customer('X', '11.222.333/0001-81', 'not-an-email')$q$, 'E-mail inválido');
     perform public.create_customer('Empresa Dois', '11.222.333/0001-81', 'dois@example.com'); -- valid CNPJ
+    assert c.phone is null, 'phone is optional';
+    assert (public.create_customer('Com Telefone', '390.533.447-05', 'tel@example.com', '(11) 91234-5678')).phone = '5511912345678',
+           'phone keeps digits and gets the country code';
+    assert (public.create_customer('Telefone Fixo', '111.444.777-35', 'fixo@example.com', '+55 (21) 3456-7890')).phone = '552134567890',
+           'landline with country code';
+    perform test.expect_error($q$select public.create_customer('X', '45.723.174/0001-10', 'x@example.com', '123')$q$, 'Telefone inválido');
 
     perform test.expect_error(format($q$select public.create_invoice(%L, 'Velha', 1000, current_date - 3)$q$, c.id), 'passado');
     perform test.expect_error(format($q$select public.create_invoice(%L, 'Zero', 0, current_date + 5)$q$, c.id), 'maior que zero');
@@ -210,10 +216,12 @@ set role authenticated;
 
 do $$ begin
     assert (select count(*) from public.customers) = 6, 'demo has 6 customers';
-    assert (select count(*) from public.invoices) = 17, 'demo has 17 invoices';
+    assert (select count(*) from public.customers where phone is not null) = 6, 'demo customers have phones';
+    assert (select count(*) from public.invoices) = 23, 'demo has 23 invoices';
     assert (select count(*) from public.invoices where status = 'OVERDUE') = 3, 'demo has overdue invoices';
     assert (select count(*) from public.notifications) > 0, 'demo has e-mails';
     assert (public.report_summary() ->> 'overdueCents')::bigint = 228000, 'demo overdue total';
+    assert (public.report_summary() ->> 'receivedCents')::bigint = 210000, 'demo received this month (two payments today)';
 end $$;
 
 do $$ declare n int; begin
@@ -226,8 +234,8 @@ reset role;
 select public.reset_demo();
 do $$ begin
     assert (select count(*) from public.customers c join public.organizations o on o.id = c.org_id and o.is_demo) = 6, 'reset restores customers';
-    assert (select count(*) from public.invoices i join public.organizations o on o.id = i.org_id and o.is_demo) = 17, 'reset restores invoices';
-    assert (select count(*) from public.customers c join public.organizations o on o.id = c.org_id where not o.is_demo) = 2,
+    assert (select count(*) from public.invoices i join public.organizations o on o.id = i.org_id and o.is_demo) = 23, 'reset restores invoices';
+    assert (select count(*) from public.customers c join public.organizations o on o.id = c.org_id where not o.is_demo) = 4,
            'reset does not touch real companies';
 end $$;
 

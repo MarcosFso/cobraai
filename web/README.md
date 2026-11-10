@@ -8,9 +8,13 @@ app talks directly to a Postgres database; the business rules and the security l
 * Login with e-mail and password. Anyone can **create a company account**; each company only sees its own data.
 * A shared **test user** ("Entrar como visitante") opens a demo company with fictional data, limited in size and
   restored every night.
-* Customers (CPF/CNPJ validated by check digits), invoices (issue, pay, cancel), automatic overdue status,
-  dashboard with totals and a monthly chart, and a feed of the e-mails that would be sent to customers
-  (simulated: nothing is really sent in this version).
+* Customers (CPF/CNPJ validated by check digits, optional WhatsApp number), invoices (issue, pay, cancel),
+  automatic overdue status, dashboard with totals, a monthly chart and a status breakdown.
+* **Collect on WhatsApp**: a button on each open or overdue invoice opens a WhatsApp chat with a ready-made message
+  (friendly before the due date, firmer after). It is a "click to chat" link: free, no API, and the person only
+  presses send. Fully automatic sending would need the paid WhatsApp Business API.
+* A feed of the e-mails the system would send to customers (simulated: nothing is really sent in this version).
+* Light and dark themes, responsive layout (bottom navigation on phones).
 
 ## How it is built
 
@@ -33,6 +37,14 @@ React + TypeScript (Vercel)  --supabase-js-->  Supabase: Postgres + Auth
   the repository, inside Postgres.
 * **Tests**: `supabase/tests/rules.test.sql` checks the rules, the tenant isolation (a user cannot read or change
   another company's data) and the demo limits, against a real PostgreSQL 16. It runs in CI.
+
+## Design preview without a database
+
+```bash
+cd web && VITE_MOCK=true npm run dev   # whole app on in-memory sample data, same rules as the database
+```
+
+The mock exists for design work and for the app smoke test; the production build never sets `VITE_MOCK`.
 
 ## Run locally
 

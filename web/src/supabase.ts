@@ -3,7 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 const url = import.meta.env.VITE_SUPABASE_URL;
 const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-export const isConfigured = Boolean(url && anonKey);
+export const isMock = import.meta.env.VITE_MOCK === 'true';
+export const isConfigured = isMock || Boolean(url && anonKey);
 
 // The anon key is public by design: what a user can read or change is decided by row level security in the database.
 export const supabase = createClient(url ?? 'http://localhost:54321', anonKey ?? 'not-configured');

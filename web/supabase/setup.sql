@@ -36,6 +36,7 @@ create table public.customers (
     name        text not null check (char_length(name) between 1 and 120),
     document    text not null check (document ~ '^[0-9]{11}$' or document ~ '^[0-9]{14}$'),
     email       text not null check (char_length(email) <= 160 and email ~* '^[^@\s]+@[^@\s]+\.[^@\s]+$'),
+    phone       text check (phone ~ '^55[0-9]{10,11}$'), -- Brazilian number with country code, digits only (optional)
     created_at  timestamptz not null default now(),
     unique (org_id, document)
 );
@@ -221,12 +222,14 @@ create trigger invoices_demo_limit before insert on public.invoices
 -- Business functions (the only way to write data)
 -- ---------------------------------------------------------------------------------------------------------------
 
-create function public.create_customer(p_name text, p_document text, p_email text) returns public.customers
+create function public.create_customer(p_name text, p_document text, p_email text, p_phone text default null)
+returns public.customers
 language plpgsql security definer set search_path = public as $$
 declare
-    v_org uuid := public.current_org();
-    v_doc text := regexp_replace(coalesce(p_document, ''), '\D', '', 'g');
-    v_row public.customers;
+    v_org   uuid := public.current_org();
+    v_doc   text := regexp_replace(coalesce(p_document, ''), '\D', '', 'g');
+    v_phone text := nullif(regexp_replace(coalesce(p_phone, ''), '\D', '', 'g'), '');
+    v_row   public.customers;
 begin
     if v_org is null then raise exception 'Usuário sem empresa' using errcode = '42501'; end if;
     if coalesce(trim(p_name), '') = '' then raise exception 'Informe o nome do cliente' using errcode = '22023'; end if;
@@ -234,10 +237,16 @@ begin
     if coalesce(trim(p_email), '') !~* '^[^@\s]+@[^@\s]+\.[^@\s]+$' then
         raise exception 'E-mail inválido' using errcode = '22023';
     end if;
+    if v_phone is not null then
+        if length(v_phone) in (10, 11) then v_phone := '55' || v_phone; end if; -- DDD + number: add the country code
+        if v_phone !~ '^55[0-9]{10,11}$' then
+            raise exception 'Telefone inválido. Use o DDD e o número, por exemplo (11) 91234-5678' using errcode = '22023';
+        end if;
+    end if;
 
     begin
-        insert into public.customers (org_id, name, document, email)
-        values (v_org, left(trim(p_name), 120), v_doc, left(trim(p_email), 160))
+        insert into public.customers (org_id, name, document, email, phone)
+        values (v_org, left(trim(p_name), 120), v_doc, left(trim(p_email), 160), v_phone)
         returning * into v_row;
     exception when unique_violation then
         raise exception 'Já existe um cliente com esse CPF/CNPJ' using errcode = '23505';
@@ -444,20 +453,27 @@ declare
     rec record;
 begin
     for rec in select * from (values
-        ('Padaria Pão Quente Ltda',      '11222333000181', 'financeiro@paoquente.example'),
-        ('Clínica Bem Viver',            '11444777000161', 'contas@bemviver.example'),
-        ('Ana Souza',                    '52998224725',    'ana.souza@example.com'),
-        ('Oficina Mecânica Irmãos Lima', '45723174000110', 'pagamentos@oficinalima.example'),
-        ('Carlos Pereira',               '11144477735',    'carlos.pereira@example.com'),
-        ('Mariana Costa',                '39053344705',    'mariana.costa@example.com')
-    ) as t(name, document, email) loop
-        insert into public.customers (org_id, name, document, email) values (p_org, rec.name, rec.document, rec.email)
+        ('Padaria Pão Quente Ltda',      '11222333000181', 'financeiro@paoquente.example',   '5511987650001'),
+        ('Clínica Bem Viver',            '11444777000161', 'contas@bemviver.example',        '5511987650002'),
+        ('Ana Souza',                    '52998224725',    'ana.souza@example.com',          '5511987650003'),
+        ('Oficina Mecânica Irmãos Lima', '45723174000110', 'pagamentos@oficinalima.example', '5511987650004'),
+        ('Carlos Pereira',               '11144477735',    'carlos.pereira@example.com',     '5511987650005'),
+        ('Mariana Costa',                '39053344705',    'mariana.costa@example.com',      '5511987650006')
+    ) as t(name, document, email, phone) loop
+        insert into public.customers (org_id, name, document, email, phone)
+        values (p_org, rec.name, rec.document, rec.email, rec.phone)
         returning id into v_id;
         c := c || v_id;
     end loop;
 
     -- (customer index, description, cents, due offset in days, status, created N days ago, paid N days ago)
     for rec in select * from (values
+        (1, 'Honorários de março',         150000, -235, 'PAID',    245, 238),
+        (2, 'Mensalidade de abril',        89000,  -205, 'PAID',    215, 208),
+        (3, 'Consultoria de maio',         42000,  -175, 'PAID',    185, 176),
+        (5, 'Honorários de junho',         60000,  -145, 'PAID',    155, 147),
+        (4, 'Abertura de filial',          95000,  -120, 'PAID',    128, 119),
+        (1, 'Honorários de julho',         150000, -100, 'PAID',    108, 98),
         (1, 'Honorários de agosto',        150000, -75, 'PAID',     80, 70),
         (2, 'Mensalidade de agosto',       89000,  -70, 'PAID',     78, 68),
         (3, 'Consultoria contábil',        42000,  -60, 'PAID',     65, 58),
@@ -465,8 +481,8 @@ begin
         (4, 'Declaração de imposto',       35000,  -40, 'PAID',     48, 41),
         (2, 'Mensalidade de setembro',     89000,  -40, 'PAID',     47, 38),
         (5, 'Abertura de empresa',         120000, -30, 'PAID',     36, 29),
-        (6, 'Honorários de outubro',       60000,  -20, 'PAID',     26, 18),
-        (1, 'Honorários de outubro',       150000, -12, 'PAID',     20, 10),
+        (6, 'Honorários de outubro',       60000,  -20, 'PAID',     26, 0),
+        (1, 'Honorários de outubro',       150000, -12, 'PAID',     20, 0),
         (3, 'Balanço trimestral',          98000,  -15, 'OVERDUE',  25, null),
         (4, 'Folha de pagamento de out.',  54000,  -8,  'OVERDUE',  18, null),
         (5, 'Regularização fiscal',        76000,  -3,  'OVERDUE',  12, null),
@@ -564,7 +580,7 @@ grant select on all tables in schema public to authenticated;
 revoke execute on all functions in schema public from public, anon, authenticated;
 grant execute on function
     public.current_org(), public.is_member(uuid),
-    public.create_customer(text, text, text), public.create_invoice(uuid, text, bigint, date),
+    public.create_customer(text, text, text, text), public.create_invoice(uuid, text, bigint, date),
     public.pay_invoice(uuid), public.cancel_invoice(uuid), public.refresh_overdue(),
     public.report_summary(), public.report_monthly(integer)
 to authenticated;

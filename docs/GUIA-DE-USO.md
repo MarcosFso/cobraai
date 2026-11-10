@@ -38,6 +38,32 @@ Uma empresa nova começa vazia, com tudo zerado. Não aparece o aviso amarelo de
 Os números são calculados pelo serviço de relatórios a partir dos eventos do Kafka e se atualizam sozinhos a cada
 poucos segundos.
 
+### Previsão de caixa e clientes que merecem atenção
+
+![Previsão de caixa](screenshots/18-previsao-de-caixa.jpg)
+
+No fim do painel há duas áreas que olham para o **futuro**:
+
+* **Previsão de caixa**: quanto você deve ter em caixa neste mês e nos próximos dois. As barras comparam o que já foi
+  **recebido** (verde), o que é **previsto** (roxo) e o que entraria **se todos pagassem em dia** (cinza). Cada cobrança
+  em aberto entra com o peso da chance de ser paga, no mês em que aquele cliente costuma pagar. É uma estimativa, não
+  uma promessa.
+* **Clientes que merecem atenção**: quem tem risco médio ou alto de pagar atrasado, para você saber com quem falar
+  primeiro.
+
+![Clientes com risco](screenshots/19-clientes-com-risco.jpg)
+
+Cada cliente tem um selo de **risco baixo, médio ou alto** e uma frase como "costuma pagar 9 dias depois". Passe o
+mouse no selo para ver a pontuação (0 a 100). Como é calculado:
+
+* **Quanto ele atrasa:** pagar até 3 dias depois do vencimento não conta como atraso. Pagar mais tarde conta, e a média
+  de dias de atraso pesa.
+* **Quantas vezes atrasa:** a proporção de cobranças pagas com atraso.
+* **O que está vencido agora:** cada cobrança vencida soma pontos, e as mais antigas somam mais.
+* Cliente sem pagamentos aparece como "Sem histórico". Com menos de 3 pagamentos a nota é só um indício
+  ("poucos pagamentos até agora").
+* O painel precisa de histórico: quanto mais cobranças pagas, melhor a previsão.
+
 ## 3. Cadastrar um cliente
 
 Abra **Clientes** e clique em **Novo cliente**.

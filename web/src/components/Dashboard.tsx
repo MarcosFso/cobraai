@@ -6,6 +6,7 @@ import { api } from '../api';
 import { dueLabel, formatBrl, greeting } from '../format';
 import type { Invoice, InvoiceStatus, Summary } from '../types';
 import { InvoiceActions } from './InvoiceActions';
+import { ForecastPanel, RiskList } from './RiskPanel';
 import { Avatar, EmptyState, Skeleton, STATUS_LABEL } from './ui';
 
 interface Kpi {
@@ -152,6 +153,13 @@ export function Dashboard({ onNewInvoice }: { onNewInvoice: () => void }) {
         <MonthlyChart />
         <StatusDonut invoices={all} />
       </div>
+
+      {api.features.risk && (
+        <div className="grid-2">
+          <ForecastPanel />
+          <RiskList />
+        </div>
+      )}
 
       <div className="grid-2">
         <InvoiceList title="Próximos vencimentos" icon={<CalendarClock size={26} />} invoices={open.slice(0, 5)} empty="Nenhuma cobrança a vencer" />

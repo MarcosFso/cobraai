@@ -18,7 +18,9 @@ const unavailable = async (): Promise<never> => {
 };
 
 export const realApi: Api = {
-  features: { team: false, recurring: false },
+  features: { team: false, recurring: false, risk: false },
+  risk: async () => [],
+  forecast: async () => [],
   createRecurring: unavailable,
   recurring: async () => [],
   stopRecurring: unavailable,

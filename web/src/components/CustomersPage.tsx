@@ -4,12 +4,15 @@ import { useState } from 'react';
 import { api } from '../api';
 import { formatBrl, formatDocument, formatPhone } from '../format';
 import { whatsappLink } from '../whatsapp';
+import { RiskBadge, riskDetail } from './RiskPanel';
 import { Avatar, EmptyState, Skeleton } from './ui';
 
 export function CustomersPage({ onNewCustomer }: { onNewCustomer: () => void }) {
   const [search, setSearch] = useState('');
   const customers = useQuery({ queryKey: ['customers'], queryFn: api.customers });
   const invoices = useQuery({ queryKey: ['invoices'], queryFn: api.invoices });
+  const risk = useQuery({ queryKey: ['risk'], queryFn: api.risk, enabled: api.features.risk, refetchInterval: 5000 });
+  const riskOf = new Map((risk.data ?? []).map((r) => [r.customer_id, r]));
 
   // How much each customer still owes (open + overdue)
   const owed = new Map<string, number>();
@@ -54,6 +57,7 @@ export function CustomersPage({ onNewCustomer }: { onNewCustomer: () => void }) 
       <div className="cards-grid">
         {visible.map((customer) => {
           const pending = owed.get(customer.id) ?? 0;
+          const customerRisk = riskOf.get(customer.id);
           return (
             <article key={customer.id} className="customer">
               <Avatar name={customer.name} size={44} />
@@ -62,6 +66,9 @@ export function CustomersPage({ onNewCustomer }: { onNewCustomer: () => void }) 
                 <span className="muted">{formatDocument(customer.document)}</span>
                 <span className="muted ellipsis">{customer.email}</span>
                 {customer.phone && <span className="muted">{formatPhone(customer.phone)}</span>}
+                {customerRisk && (
+                  <span className="risk-line"><RiskBadge risk={customerRisk} /><span className="muted small">{riskDetail(customerRisk)}</span></span>
+                )}
               </div>
               <div className="right">
                 <span className="muted small">A receber</span>

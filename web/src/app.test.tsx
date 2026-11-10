@@ -42,6 +42,17 @@ describe('App on sample data', () => {
     expect(await screen.findByText('Padaria Pão Quente Ltda')).toBeTruthy();
     expect(screen.getByText('11.222.333/0001-81')).toBeTruthy();
   });
+  it('shows the cash forecast on the dashboard and a risk badge on each customer', async () => {
+    await renderApp();
+    fireEvent.click(await screen.findByRole('button', { name: 'Painel' }));
+    expect(await screen.findByText('Previsão de caixa')).toBeTruthy();
+    expect(await screen.findByText('Clientes que merecem atenção')).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clientes' }));
+    expect(await screen.findByText('Padaria Pão Quente Ltda')).toBeTruthy();
+    await waitFor(() => expect(screen.getAllByText(/Risco (baixo|médio|alto)/).length).toBeGreaterThan(0));
+  });
+
   it('shows the monthly charges and the team screen', async () => {
     await renderApp();
     fireEvent.click(await screen.findByRole('button', { name: 'Cobranças' }));

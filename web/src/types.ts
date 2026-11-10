@@ -10,6 +10,32 @@ export interface Organization {
 
 export type Role = 'ADMIN' | 'MEMBER';
 
+export type RiskLevel = 'LOW' | 'MEDIUM' | 'HIGH' | 'NO_DATA';
+
+/** Default risk of one customer, from how late they paid before and what is overdue now (0 = safe, 100 = very risky). */
+export interface CustomerRisk {
+  customer_id: string;
+  customer_name: string;
+  score: number;
+  level: RiskLevel;
+  avg_delay_days: number;
+  late_rate: number;
+  /** Fewer than 3 payments so far: the score is only a hint. */
+  limited_data: boolean;
+  paid_count: number;
+  overdue_count: number;
+  oldest_overdue_days: number;
+  unpaid_cents: number;
+}
+
+/** Cash for one month: what is due, what is expected given each customer's habits, and what already came in. */
+export interface ForecastMonth {
+  month: string;
+  received_cents: number;
+  nominal_cents: number;
+  expected_cents: number;
+}
+
 export interface Member {
   id: string;
   email: string;
@@ -92,7 +118,9 @@ export interface NewInvoice {
 /** Everything the screens need from the back end. The real one talks to Supabase; the mock one is for previews. */
 export interface Api {
   /** Which optional features this back end has (the Supabase version has neither teams nor monthly charges). */
-  features: { team: boolean; recurring: boolean };
+  features: { team: boolean; recurring: boolean; risk: boolean };
+  risk(): Promise<CustomerRisk[]>;
+  forecast(): Promise<ForecastMonth[]>;
   organization(): Promise<Organization | null>;
   refreshOverdue(): Promise<number>;
   summary(): Promise<Summary>;

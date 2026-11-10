@@ -300,3 +300,17 @@ tr.inactive { opacity: 0.55; }
   .team-list .actions { width: 100%; justify-content: flex-start; padding-left: 48px; }
 }
 .modal .segmented { margin: 14px 0 12px; }
+
+/* ---------- default risk and cash forecast ---------- */
+.risk { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; font-size: 0.74rem; font-weight: 700; white-space: nowrap; background: var(--surface-2); color: var(--muted); }
+.risk i { width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.risk.LOW { background: var(--good-soft); color: var(--good); }
+.risk.MEDIUM { background: var(--warn-soft); color: var(--warn); }
+.risk.HIGH { background: var(--bad-soft); color: var(--bad); }
+.risk-line { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; margin-top: 4px; }
+.risk-note { display: flex; align-items: center; gap: 6px; margin-top: 12px; }
+.forecast-lead { margin: 0 0 8px; line-height: 1.5; }
+.forecast-lead strong { font-size: 1.15rem; }
+.small-chart { height: 210px; }
+.panel > header h2 + .small { margin-left: 8px; }
+.rows.risk-rows li .grow span { white-space: normal; overflow: visible; text-overflow: clip; }

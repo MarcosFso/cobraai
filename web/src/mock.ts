@@ -1,6 +1,7 @@
 import { isValidDocument, normalizePhone } from './document';
 import { addDaysIso, formatBrl, formatDate, todayIso } from './format';
-import type { Api, Auth, AuthSession, Customer, Invoice, InvoiceStatus, Member, MonthlyTotal, Notification, Recurring, Summary } from './types';
+import { buildForecast, scoreCustomer } from './risk';
+import type { Api, Auth, AuthSession, Customer, CustomerRisk, Invoice, InvoiceStatus, Member, MonthlyTotal, Notification, Recurring, Summary } from './types';
 
 /**
  * In-memory stand-in for the back end: same rules and messages as the database functions, sample data like the
@@ -98,8 +99,45 @@ function find(id: string): Invoice {
   return invoice;
 }
 
+const dayDiff = (later: string, earlier: string) =>
+  Math.round((new Date(`${later.slice(0, 10)}T12:00:00`).getTime() - new Date(`${earlier.slice(0, 10)}T12:00:00`).getTime()) / 86_400_000);
+
+function riskRows(): CustomerRisk[] {
+  const today = todayIso();
+  return customers.map((customer) => {
+    const mine = invoices.filter((i) => i.customer_id === customer.id);
+    const paid = mine.filter((i) => i.status === 'PAID' && i.paid_at);
+    const delays = paid.map((i) => Math.max(0, dayDiff(i.paid_at as string, i.due_date)));
+    const overdueDays = mine.filter((i) => i.status === 'OVERDUE').map((i) => dayDiff(today, i.due_date)).filter((d) => d > 0);
+    return {
+      customer_id: customer.id, customer_name: customer.name,
+      ...(() => {
+        const s = scoreCustomer(paid.length, delays.filter((d) => d > 3).length, delays.reduce((a, b) => a + b, 0), overdueDays);
+        return { score: s.score, level: s.level, avg_delay_days: s.avgDelayDays, late_rate: s.lateRate, limited_data: s.limitedData };
+      })(),
+      paid_count: paid.length, overdue_count: overdueDays.length,
+      oldest_overdue_days: overdueDays.length ? Math.max(...overdueDays) : 0,
+      unpaid_cents: sum(mine.filter((i) => i.status === 'OPEN' || i.status === 'OVERDUE')),
+    };
+  }).sort((a, b) => Number(a.level === 'NO_DATA') - Number(b.level === 'NO_DATA') || b.score - a.score);
+}
+
 export const mockApi: Api = {
-  features: { team: true, recurring: true },
+  features: { team: true, recurring: true, risk: true },
+
+  risk: async () => (await delay(), riskRows()),
+  forecast: async () => {
+    await delay();
+    const rows = riskRows();
+    const paying = rows.filter((r) => r.paid_count > 0);
+    const payments = paying.reduce((a, r) => a + r.paid_count, 0);
+    const fallback = payments ? paying.reduce((a, r) => a + r.avg_delay_days * r.paid_count, 0) / payments : 0;
+    const month = todayIso().slice(0, 7);
+    const received = sum(invoices.filter((i) => i.status === 'PAID' && i.paid_at && sameMonth(i.paid_at, month)));
+    const unpaid = invoices.filter((i) => i.status === 'OPEN' || i.status === 'OVERDUE')
+      .map((i) => ({ customerId: i.customer_id, amountCents: i.amount_cents, dueDate: i.due_date }));
+    return buildForecast(unpaid, new Map(rows.map((r) => [r.customer_id, r])), received, todayIso(), fallback);
+  },
   organization: async () => (await delay(), { id: 'demo', name: 'Empresa Demonstração', is_demo: true, role: 'ADMIN' }),
 
   createRecurring: async (body) => {

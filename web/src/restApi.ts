@@ -1,5 +1,5 @@
 import { DEMO_EMAIL } from './supabase';
-import type { Api, Auth, AuthSession, Customer, Invoice, Member, MonthlyTotal, Notification, Recurring, Role, Summary } from './types';
+import type { Api, Auth, AuthSession, Customer, CustomerRisk, ForecastMonth, Invoice, Member, MonthlyTotal, Notification, Recurring, Role, Summary } from './types';
 
 /**
  * The same screens, talking to the microservices instead of Supabase:
@@ -94,6 +94,27 @@ interface BillingMember {
   you: boolean;
 }
 
+interface ReportRisk {
+  customerId: string;
+  customerName: string;
+  score: number;
+  level: CustomerRisk['level'];
+  avgDelayDays: number;
+  lateRate: number;
+  limitedData: boolean;
+  paidCount: number;
+  overdueCount: number;
+  oldestOverdueDays: number;
+  unpaidCents: number;
+}
+
+interface ReportForecast {
+  month: string;
+  receivedCents: number;
+  nominalCents: number;
+  expectedCents: number;
+}
+
 const toRecurring = (r: BillingRecurring): Recurring => ({
   id: r.id, customer_id: r.customerId, customer_name: r.customerName, description: r.description,
   amount_cents: r.amountCents, day_of_month: r.dayOfMonth, next_due_date: r.nextDueDate, active: r.active,
@@ -160,7 +181,18 @@ interface NotificationRow {
 }
 
 export const restApi: Api = {
-  features: { team: true, recurring: true },
+  features: { team: true, recurring: true, risk: true },
+
+  risk: async () =>
+    (await request<ReportRisk[]>(`${REPORT}/reports/risk`)).map((r): CustomerRisk => ({
+      customer_id: r.customerId, customer_name: r.customerName, score: r.score, level: r.level,
+      avg_delay_days: r.avgDelayDays, late_rate: r.lateRate, limited_data: r.limitedData, paid_count: r.paidCount,
+      overdue_count: r.overdueCount, oldest_overdue_days: r.oldestOverdueDays, unpaid_cents: r.unpaidCents,
+    })),
+  forecast: async () =>
+    (await request<{ months: ReportForecast[] }>(`${REPORT}/reports/forecast`)).months.map((m): ForecastMonth => ({
+      month: m.month, received_cents: m.receivedCents, nominal_cents: m.nominalCents, expected_cents: m.expectedCents,
+    })),
 
   organization: async () => {
     const current = await me();

@@ -5,6 +5,8 @@ import com.billing.domain.CustomerRepository;
 import com.billing.domain.Invoice;
 import com.billing.domain.InvoiceRepository;
 import com.billing.domain.InvoiceStatus;
+import com.billing.domain.RecurringInvoice;
+import com.billing.domain.RecurringInvoiceRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -67,12 +69,15 @@ public class DemoService {
 
     private final CustomerRepository customers;
     private final InvoiceRepository invoices;
+    private final RecurringInvoiceRepository recurrings;
     private final EventRecorder events;
     private final Clock clock;
 
-    public DemoService(CustomerRepository customers, InvoiceRepository invoices, EventRecorder events, Clock clock) {
+    public DemoService(CustomerRepository customers, InvoiceRepository invoices, RecurringInvoiceRepository recurrings,
+                       EventRecorder events, Clock clock) {
         this.customers = customers;
         this.invoices = invoices;
+        this.recurrings = recurrings;
         this.events = events;
         this.clock = clock;
     }
@@ -87,6 +92,10 @@ public class DemoService {
         for (SampleCustomer sample : CUSTOMERS) {
             created.add(customers.save(new Customer(orgId, sample.name(), sample.document(), sample.email(), sample.phone())));
         }
+
+        // One monthly charge, so the "Recorrentes" screen is not empty. Its next invoice is far enough away that the
+        // job does not issue it during the 24 hours the sandbox lives.
+        recurrings.save(RecurringInvoice.startingAt(orgId, created.get(0).getId(), "Honorários mensais", 150000, today.plusDays(25)));
 
         for (SampleInvoice sample : INVOICES) {
             Customer customer = created.get(sample.customer());

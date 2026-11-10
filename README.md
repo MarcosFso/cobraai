@@ -109,6 +109,15 @@ browser --Authorization: Bearer <token>--> billing-service | report-service | no
   and a forged token checks that nothing leaks across billing, Kafka, reports and notifications.
 * **"Entrar como visitante"** creates a private sandbox company with sample data (events flagged `seed`: counted by the
   report, but no e-mail is sent). Sandboxes are capped and deleted after 24 hours.
+* **Several users per company.** A person creates an ordinary account without a company name; an administrator of the
+  company types that e-mail on the **Equipe** screen and the account starts seeing the company's data. Roles: `ADMIN`
+  (manages people) and `MEMBER`. The company and role are confirmed against the database on every request to the billing
+  service, so a removed person loses access immediately; the report and notification services trust the token until it
+  expires (4 hours, `JWT_TTL_HOURS`).
+* **Monthly charges.** "Todo mês" on a new invoice creates the first invoice now; a scheduled job issues the next ones
+  5 days before each due date, through the same outbox as any invoice. The day is kept (a charge for the 31st goes to
+  the 28th in February and back to the 31st), a version column stops two runs from issuing a month twice, and a stopped
+  charge issues nothing more.
 * **WhatsApp**: customers have an optional phone number (validated as a Brazilian number); a button on each open or
   overdue invoice opens a WhatsApp chat with a ready-made message (free "click to chat" link, no API).
 * The owner tools (Kafka UI and Mailpit) show every company's data, so in the production setup they sit behind a
@@ -120,6 +129,7 @@ browser --Authorization: Bearer <token>--> billing-service | report-service | no
 |---|---|
 | ![Login](docs/screenshots/01-login.jpg) | ![Dashboard](docs/screenshots/02-painel.jpg) |
 | ![Invoices](docs/screenshots/03-cobrancas.jpg) | ![Customers](docs/screenshots/05-clientes.jpg) |
+| ![Monthly charges](docs/screenshots/15-cobrancas-mensais.jpg) | ![Team](docs/screenshots/14-equipe.jpg) |
 
 ## Services
 
@@ -132,7 +142,8 @@ browser --Authorization: Bearer <token>--> billing-service | report-service | no
 
 Billing API: `POST /auth/register`, `POST /auth/login`, `POST /auth/demo`, `GET /auth/me`, `POST /customers`,
 `GET /customers`, `GET /customers/{id}`, `POST /invoices`, `GET /invoices?status=OPEN`, `POST /invoices/{id}/pay`,
-`POST /invoices/{id}/cancel`. Report API: `GET /reports/summary`, `GET /reports/monthly?year=`, `GET /reports/overdue`.
+`POST /invoices/{id}/cancel`, `POST /recurring`, `GET /recurring`, `POST /recurring/{id}/stop`, `GET /team`, `POST /team`,
+`PUT /team/{id}/role`, `DELETE /team/{id}`. Report API: `GET /reports/summary`, `GET /reports/monthly?year=`, `GET /reports/overdue`.
 Notification API: `GET /notifications`. All of them except `/health` and the three `/auth` entry points need the
 login token. See [Accounts and data isolation](#accounts-and-data-isolation).
 
@@ -187,5 +198,6 @@ managed Kafka and databases are not free. The complete demo runs locally.
 
 ## Out of scope for the MVP
 
-Real payments (PIX/boleto), tax invoices, multiple companies and user authentication (no login: a deliberate MVP
-choice, not an oversight).
+Real payments (PIX/boleto), tax invoices, e-mail verification and password reset, and automatic WhatsApp sending
+(the WhatsApp button opens a prepared chat; sending on its own needs the paid WhatsApp Business API). The Supabase
+version has no teams and no monthly charges yet (the Java version has both).

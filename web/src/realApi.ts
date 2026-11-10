@@ -13,7 +13,20 @@ function unwrap<T>(result: { data: T | null; error: { message: string } | null }
   return result.data as T;
 }
 
+const unavailable = async (): Promise<never> => {
+  throw new Error('Disponível na versão com Java e Kafka.');
+};
+
 export const realApi: Api = {
+  features: { team: false, recurring: false },
+  createRecurring: unavailable,
+  recurring: async () => [],
+  stopRecurring: unavailable,
+  team: async () => [],
+  addMember: unavailable,
+  changeRole: unavailable,
+  removeMember: unavailable,
+
   organization: async () =>
     unwrap(await supabase.from('organizations').select('id, name, is_demo').limit(1).maybeSingle<Organization>()),
 

@@ -71,6 +71,7 @@ Abra **Cobranças** e clique em **Nova cobrança**.
 
 ![Lista de cobranças](screenshots/03-cobrancas.jpg)
 
+* Para uma cobrança que se repete, veja a seção "Cobranças que se repetem todo mês" mais abaixo.
 * Use os filtros no alto (**Todas**, **Em aberto**, **Vencida**, **Paga**, **Cancelada**) e a busca por cliente ou
   descrição.
 * Em cada cobrança em aberto ou vencida há três botões:
@@ -81,6 +82,24 @@ Abra **Cobranças** e clique em **Nova cobrança**.
   * **X, cancelar**: cancela a cobrança, depois de uma confirmação.
 * Uma cobrança paga ou cancelada não pode ser paga nem cancelada de novo.
 * Quando o vencimento passa, a cobrança vira **Vencida** sozinha (uma rotina diária do serviço em Java faz isso).
+
+### Cobranças que se repetem todo mês
+
+![Nova cobrança mensal](screenshots/16-cobranca-mensal.jpg)
+
+Mensalidades e honorários não precisam ser emitidos de novo a cada mês. Em **Nova cobrança**, escolha **Todo mês**:
+
+* O campo de data vira **Primeiro vencimento**. A primeira cobrança é emitida na hora.
+* As próximas saem **sozinhas, 5 dias antes de cada vencimento**, sempre no mesmo dia do mês. Se o dia não existe no
+  mês (31 em fevereiro), usa o último dia, e volta ao 31 depois.
+* Cada cobrança nova passa pelo mesmo caminho das outras: o Java grava o evento, o Kafka entrega e o painel atualiza.
+* Escolha **Só uma vez** para uma cobrança comum.
+
+![Cobranças mensais](screenshots/15-cobrancas-mensais.jpg)
+
+Em **Cobranças → Mensais** você vê tudo o que se repete, o dia e a próxima cobrança. O botão **Parar** encerra as
+próximas emissões; o que já foi emitido continua. Nas listas, as cobranças que vieram de uma recorrência têm o ícone de
+setas circulares ao lado da descrição.
 
 ## 6. Avisos aos clientes
 
@@ -100,7 +119,37 @@ O botão de lua, no canto inferior esquerdo, alterna entre o tema claro e o escu
 
 No celular o menu vira uma barra de navegação na parte de baixo, e as tabelas viram cartões.
 
-## 8. Para mostrar numa entrevista
+## 8. Equipe: vários usuários na mesma empresa
+
+![Equipe](screenshots/14-equipe.jpg)
+
+Para um funcionário ver as cobranças e os clientes da empresa:
+
+1. **A pessoa** abre o site, clica em **Criar conta**, escolhe **Entrar numa empresa**, digita e-mail e senha e cria a
+   conta (sem nome de empresa).
+
+   ![Criar conta como funcionário](screenshots/13-criar-conta-ou-funcionario.jpg)
+
+2. Ela cai na tela **Aguardando liberação**. Ela confere sozinha de tempos em tempos.
+
+   ![Aguardando liberação](screenshots/17-aguardando-liberacao.jpg)
+
+3. **O administrador** abre **Equipe**, digita o e-mail dela e clica em **Adicionar**. Pronto: a pessoa passa a ver os
+   mesmos clientes, cobranças, painel e avisos da empresa.
+
+Permissões:
+
+* **Funcionário**: vê e edita clientes e cobranças. Não gerencia a equipe.
+* **Administrador**: faz tudo isso e também adiciona e remove pessoas e troca a permissão de cada uma. A empresa
+  sempre mantém pelo menos um administrador, e ninguém remove a si mesmo.
+* Quem criou a empresa é o primeiro administrador.
+* Ao remover uma pessoa, o acesso dela ao serviço de cobranças acaba na hora. Nos painéis de relatório e de avisos
+  ela ainda pode ver os dados até o login expirar (no máximo 4 horas).
+* Por segurança, a tela de adicionar responde igual para e-mail sem conta e para e-mail que já é de outra empresa, e
+  só libera quem criou a conta sem empresa.
+* Na demonstração a equipe fica desligada (a empresa é apagada em 24 horas).
+
+## 9. Para mostrar numa entrevista
 
 1. Entre como visitante e mostre o painel com números e o gráfico.
 2. Cadastre um cliente com WhatsApp e emita uma cobrança.

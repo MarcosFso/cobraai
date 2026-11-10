@@ -56,10 +56,20 @@ public class InvoiceService {
 
     @Transactional
     public InvoiceView create(UUID orgId, UUID customerId, String description, long amountCents, LocalDate dueDate) {
+        return issue(orgId, customerId, description, amountCents, dueDate, null);
+    }
+
+    /**
+     * Creates an invoice. {@code recurringId} is set when a recurring charge issues it; those may have a due date
+     * already in the past (the job was down for a while), and the overdue job then marks them overdue as usual.
+     */
+    @Transactional
+    public InvoiceView issue(UUID orgId, UUID customerId, String description, long amountCents, LocalDate dueDate,
+                             UUID recurringId) {
         if (amountCents <= 0) {
             throw new BusinessRuleException("O valor precisa ser maior que zero");
         }
-        if (dueDate.isBefore(today())) {
+        if (recurringId == null && dueDate.isBefore(today())) {
             throw new BusinessRuleException("O vencimento não pode estar no passado");
         }
         Customer customer = customers.findByIdAndOrgId(customerId, orgId)
@@ -69,7 +79,9 @@ public class InvoiceService {
             throw new BusinessRuleException("Limite da demonstração atingido (" + DEMO_MAX_INVOICES + " cobranças)");
         }
 
-        Invoice invoice = invoices.save(new Invoice(orgId, customerId, description.trim(), amountCents, dueDate));
+        Invoice invoice = new Invoice(orgId, customerId, description.trim(), amountCents, dueDate);
+        invoice.setRecurringId(recurringId);
+        invoice = invoices.save(invoice);
         events.record(CREATED, invoice, customer, Instant.now(clock), false);
         log.info("Invoice created invoiceId={} orgId={}", invoice.getId(), orgId);
         return new InvoiceView(invoice, customer);

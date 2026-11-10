@@ -1,15 +1,17 @@
 import { useQuery } from '@tanstack/react-query';
-import { FileText, Plus, Search } from 'lucide-react';
+import { FileText, Plus, Repeat, Search } from 'lucide-react';
 import { useState } from 'react';
 import { api } from '../api';
 import { dueLabel, formatBrl, formatDate } from '../format';
 import type { InvoiceStatus } from '../types';
 import { InvoiceActions } from './InvoiceActions';
+import { RecurringPanel } from './RecurringPanel';
 import { Avatar, EmptyState, Skeleton, STATUS_LABEL, StatusBadge } from './ui';
 
 export function InvoicesPage({ onNewInvoice }: { onNewInvoice: () => void }) {
   const [status, setStatus] = useState<InvoiceStatus | ''>('');
   const [search, setSearch] = useState('');
+  const [view, setView] = useState<'invoices' | 'recurring'>('invoices');
   const invoices = useQuery({ queryKey: ['invoices'], queryFn: api.invoices });
   const all = invoices.data ?? [];
 
@@ -31,6 +33,14 @@ export function InvoicesPage({ onNewInvoice }: { onNewInvoice: () => void }) {
         <button className="btn primary" onClick={onNewInvoice}><Plus size={18} /> Nova cobrança</button>
       </div>
 
+      {api.features.recurring && (
+        <div className="segmented view-switch" role="group" aria-label="Tipo de cobrança">
+          <button className={view === 'invoices' ? 'active' : ''} aria-pressed={view === 'invoices'} onClick={() => setView('invoices')}>Todas as cobranças</button>
+          <button className={view === 'recurring' ? 'active' : ''} aria-pressed={view === 'recurring'} onClick={() => setView('recurring')}><Repeat size={14} /> Mensais</button>
+        </div>
+      )}
+
+      {view === 'recurring' ? <RecurringPanel onNewInvoice={onNewInvoice} /> : (
       <section className="panel">
         <div className="toolbar">
           <div className="chips" role="group" aria-label="Filtrar por status">
@@ -69,7 +79,10 @@ export function InvoicesPage({ onNewInvoice }: { onNewInvoice: () => void }) {
                     <td data-label="Cliente">
                       <div className="who-cell">
                         <Avatar name={invoice.customers?.name ?? '?'} />
-                        <div><strong>{invoice.customers?.name ?? '—'}</strong><span className="muted">{invoice.description}</span></div>
+                        <div>
+                          <strong>{invoice.customers?.name ?? '—'}</strong>
+                          <span className="muted">{invoice.recurring && <Repeat size={12} aria-label="Cobrança mensal" />} {invoice.description}</span>
+                        </div>
                       </div>
                     </td>
                     <td data-label="Valor"><strong>{formatBrl(invoice.amount_cents)}</strong></td>
@@ -88,6 +101,7 @@ export function InvoicesPage({ onNewInvoice }: { onNewInvoice: () => void }) {
           </div>
         )}
       </section>
+      )}
     </>
   );
 }

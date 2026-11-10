@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Bell, FileText, LayoutDashboard, LogOut, Moon, Sun, Users } from 'lucide-react';
+import { Bell, FileText, LayoutDashboard, LogOut, Moon, ShieldCheck, Sun, Users } from 'lucide-react';
 import { useEffect, useState, type ReactNode } from 'react';
 import { api, auth } from './api';
 import { CustomersPage } from './components/CustomersPage';
@@ -8,6 +8,8 @@ import { InvoicesPage } from './components/InvoicesPage';
 import { LoginScreen } from './components/LoginScreen';
 import { CustomerModal, InvoiceModal } from './components/Modals';
 import { NotificationsPage } from './components/NotificationsPage';
+import { TeamPage } from './components/TeamPage';
+import { WaitingScreen } from './components/WaitingScreen';
 import { Avatar } from './components/ui';
 import { DEMO_NOTE, isConfigured } from './supabase';
 import { useTheme } from './theme';
@@ -18,6 +20,7 @@ const TABS: { id: string; label: string; icon: ReactNode }[] = [
   { id: 'invoices', label: 'Cobranças', icon: <FileText size={19} /> },
   { id: 'customers', label: 'Clientes', icon: <Users size={19} /> },
   { id: 'notifications', label: 'Avisos', icon: <Bell size={19} /> },
+  { id: 'team', label: 'Equipe', icon: <ShieldCheck size={19} /> },
 ];
 
 export function App() {
@@ -42,6 +45,7 @@ export function App() {
   }
   if (session === undefined) return <main className="center"><div className="spinner" aria-label="Carregando" /></main>;
   if (!session) return <LoginScreen />;
+  if (session.pending) return <WaitingScreen email={session.email} onSession={setSession} />;
   return <Workspace email={session.email} dark={theme === 'dark'} toggleTheme={toggleTheme} />;
 }
 
@@ -60,13 +64,14 @@ function Workspace({ email, dark, toggleTheme }: { email: string; dark: boolean;
   }, [queryClient]);
 
   const org = organization.data;
+  const tabs = TABS.filter((item) => item.id !== 'team' || api.features.team);
 
   return (
     <div className="shell">
       <aside className="sidebar">
         <div className="brand"><span className="logo">₢</span> Cobranças</div>
         <nav aria-label="Seções">
-          {TABS.map((item) => (
+          {tabs.map((item) => (
             <button key={item.id} className={`nav-item${tab === item.id ? ' active' : ''}`} onClick={() => setTab(item.id)} aria-current={tab === item.id ? 'page' : undefined}>
               {item.icon}<span>{item.label}</span>
             </button>
@@ -100,6 +105,7 @@ function Workspace({ email, dark, toggleTheme }: { email: string; dark: boolean;
           {tab === 'invoices' && <InvoicesPage onNewInvoice={() => setInvoiceModal(true)} />}
           {tab === 'customers' && <CustomersPage onNewCustomer={() => setCustomerModal(true)} />}
           {tab === 'notifications' && <NotificationsPage />}
+          {tab === 'team' && <TeamPage isAdmin={org?.role === 'ADMIN'} isDemo={Boolean(org?.is_demo)} />}
         </main>
       </div>
 

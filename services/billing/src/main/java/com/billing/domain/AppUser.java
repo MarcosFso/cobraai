@@ -2,6 +2,8 @@ package com.billing.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 
@@ -15,7 +17,8 @@ public class AppUser {
     @Id
     private UUID id;
 
-    @Column(name = "org_id", nullable = false)
+    /** Null while the person has an account but no administrator has added them to a company yet. */
+    @Column(name = "org_id")
     private UUID orgId;
 
     @Column(nullable = false, length = 160)
@@ -25,22 +28,43 @@ public class AppUser {
     @Column(name = "password_hash", nullable = false, length = 100)
     private String passwordHash;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 10)
+    private Role role;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
     protected AppUser() {
     }
 
-    public AppUser(UUID orgId, String email, String passwordHash) {
+    public AppUser(UUID orgId, Role role, String email, String passwordHash) {
         this.id = UUID.randomUUID();
         this.orgId = orgId;
+        this.role = role;
         this.email = email;
         this.passwordHash = passwordHash;
         this.createdAt = Instant.now();
     }
 
+    /** An administrator adds this person to their company. */
+    public void joinOrg(UUID orgId, Role role) {
+        this.orgId = orgId;
+        this.role = role;
+    }
+
+    /** Removed from the company: the account stays, without access to any data. */
+    public void leaveOrg() {
+        this.orgId = null;
+        this.role = Role.MEMBER;
+    }
+
+    public void changeRole(Role role) { this.role = role; }
+
     public UUID getId() { return id; }
     public UUID getOrgId() { return orgId; }
     public String getEmail() { return email; }
     public String getPasswordHash() { return passwordHash; }
+    public Role getRole() { return role; }
+    public Instant getCreatedAt() { return createdAt; }
 }

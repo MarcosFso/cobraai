@@ -1,5 +1,6 @@
 package com.billing.web;
 
+import com.billing.domain.AppUser;
 import com.billing.security.CurrentUser;
 import com.billing.service.AuthService;
 import com.billing.web.Dtos.AuthResponse;
@@ -48,6 +49,11 @@ public class AuthController {
 
     @GetMapping("/me")
     public MeResponse me() {
-        return new MeResponse(currentUser.email(), currentUser.company(), currentUser.demo());
+        AppUser user = currentUser.user();
+        AuthService.AuthResult fresh = auth.refresh(user.getId());
+        String org = user.getOrgId() == null ? null : user.getOrgId().toString();
+        boolean stale = !java.util.Objects.equals(currentUser.tokenOrg(), org)
+                || !java.util.Objects.equals(currentUser.tokenRole(), fresh.role());
+        return new MeResponse(fresh.email(), fresh.company(), fresh.demo(), fresh.role(), fresh.pending(), stale ? fresh.token() : null);
     }
 }

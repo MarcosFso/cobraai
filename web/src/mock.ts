@@ -1,6 +1,6 @@
 import { isValidDocument, normalizePhone } from './document';
 import { addDaysIso, formatBrl, formatDate, todayIso } from './format';
-import type { Api, Auth, AuthSession, Customer, Invoice, InvoiceStatus, MonthlyTotal, Notification, Summary } from './types';
+import type { Api, Auth, AuthSession, Customer, Invoice, InvoiceStatus, Member, MonthlyTotal, Notification, Recurring, Summary } from './types';
 
 /**
  * In-memory stand-in for the back end: same rules and messages as the database functions, sample data like the
@@ -14,6 +14,8 @@ const daysAgoIso = (days: number) => new Date(Date.now() - days * 86_400_000).to
 let customers: Customer[] = [];
 let invoices: Invoice[] = [];
 let notifications: Notification[] = [];
+let recurrings: Recurring[] = [];
+let members: Member[] = [{ id: 'me', email: 'voce@empresa.example', role: 'ADMIN', you: true }];
 
 function emit(invoice: Invoice, type: 'created' | 'paid' | 'overdue') {
   const customer = customers.find((c) => c.id === invoice.customer_id);
@@ -68,6 +70,10 @@ function seed() {
     [3, 'Contrato cancelado', 45000, 7, 'CANCELED', 9, null],
   ];
   notifications = [];
+  recurrings = [{
+    id: uid(), customer_id: customers[0].id, customer_name: customers[0].name, description: 'Honorários mensais',
+    amount_cents: 150000, day_of_month: 10, next_due_date: addDaysIso(today, 25), active: true,
+  }];
   invoices = rows.map(([ci, description, cents, offset, status, created, paid]) => {
     const customer = customers[ci];
     const invoice: Invoice = {
@@ -93,7 +99,48 @@ function find(id: string): Invoice {
 }
 
 export const mockApi: Api = {
-  organization: async () => (await delay(), { id: 'demo', name: 'Empresa Demonstração', is_demo: true }),
+  features: { team: true, recurring: true },
+  organization: async () => (await delay(), { id: 'demo', name: 'Empresa Demonstração', is_demo: true, role: 'ADMIN' }),
+
+  createRecurring: async (body) => {
+    const first = await mockApi.createInvoice(body);
+    const customer = customers.find((c) => c.id === body.customerId);
+    const next = new Date(`${body.dueDate}T12:00:00`);
+    next.setMonth(next.getMonth() + 1);
+    recurrings.unshift({
+      id: uid(), customer_id: body.customerId, customer_name: customer?.name ?? null, description: body.description.trim(),
+      amount_cents: body.amountCents, day_of_month: Number(body.dueDate.slice(8, 10)), next_due_date: next.toISOString().slice(0, 10), active: true,
+    });
+    first.recurring = true;
+    return first;
+  },
+  recurring: async () => (await delay(), recurrings.map((r) => ({ ...r }))),
+  stopRecurring: async (id) => {
+    await delay();
+    const recurring = recurrings.find((r) => r.id === id);
+    if (!recurring) throw new Error('Cobrança recorrente não encontrada');
+    recurring.active = false;
+    return { ...recurring };
+  },
+
+  team: async () => (await delay(), members.map((m) => ({ ...m }))),
+  addMember: async (email, role) => {
+    await delay();
+    const member: Member = { id: uid(), email: email.trim().toLowerCase(), role, you: false };
+    members.push(member);
+    return member;
+  },
+  changeRole: async (id, role) => {
+    await delay();
+    const member = members.find((m) => m.id === id);
+    if (!member) throw new Error('Pessoa não encontrada');
+    member.role = role;
+    return { ...member };
+  },
+  removeMember: async (id) => {
+    await delay();
+    members = members.filter((m) => m.id !== id);
+  },
 
   refreshOverdue: async () => {
     await delay();
@@ -202,6 +249,7 @@ export const mockApi: Api = {
 // ---------------------------------------------------------------------------------------------------------------
 
 let session: AuthSession | null = null;
+let refreshes = 0;
 const listeners = new Set<(session: AuthSession | null) => void>();
 const setSession = (next: AuthSession | null) => {
   session = next;
@@ -220,10 +268,18 @@ export const mockAuth: Auth = {
     setSession({ email });
     return null;
   },
-  signUp: async (email) => {
+  signUp: async (email, _password, company) => {
     await delay(250);
-    setSession({ email });
+    refreshes = 0;
+    setSession({ email, pending: !company });
     return {};
+  },
+  // an account without a company is "released" on the second check, to show the waiting screen working
+  refresh: async () => {
+    await delay();
+    refreshes += 1;
+    if (session?.pending && refreshes >= 2) session = { email: session.email, pending: false };
+    return session;
   },
   signOut: async () => setSession(null),
 };

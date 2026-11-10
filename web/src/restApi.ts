@@ -1,5 +1,5 @@
 import { DEMO_EMAIL } from './supabase';
-import type { Api, Auth, AuthSession, Customer, Invoice, MonthlyTotal, Notification, Summary } from './types';
+import type { Api, Auth, AuthSession, Customer, Invoice, Member, MonthlyTotal, Notification, Recurring, Role, Summary } from './types';
 
 /**
  * The same screens, talking to the microservices instead of Supabase:
@@ -56,12 +56,56 @@ async function request<T>(url: string, init: RequestInit = {}, authenticated = t
     }
     throw new Error(detail);
   }
+  if (response.status === 204) return undefined as T;
   return response.json() as Promise<T>;
 }
 
 interface AuthResponse {
   token: string;
   email: string;
+  pending?: boolean;
+}
+
+interface MeResponse {
+  email: string;
+  company: string | null;
+  demo: boolean;
+  role: Role | null;
+  pending: boolean;
+  /** Only present when the token in use is out of date. */
+  token?: string;
+}
+
+interface BillingRecurring {
+  id: string;
+  customerId: string;
+  customerName: string | null;
+  description: string;
+  amountCents: number;
+  dayOfMonth: number;
+  nextDueDate: string;
+  active: boolean;
+}
+
+interface BillingMember {
+  id: string;
+  email: string;
+  role: Role;
+  you: boolean;
+}
+
+const toRecurring = (r: BillingRecurring): Recurring => ({
+  id: r.id, customer_id: r.customerId, customer_name: r.customerName, description: r.description,
+  amount_cents: r.amountCents, day_of_month: r.dayOfMonth, next_due_date: r.nextDueDate, active: r.active,
+});
+
+const toMember = (m: BillingMember): Member => ({ id: m.id, email: m.email, role: m.role, you: m.you });
+
+/** Asks who the caller is, and keeps the stored token current when an administrator changed the account. */
+async function me(): Promise<MeResponse> {
+  const current = await request<MeResponse>(`${BILLING}/auth/me`);
+  if (current.token) writeToken(current.token);
+  return current;
 }
 
 const post = <T>(url: string, body?: unknown) =>
@@ -87,6 +131,7 @@ interface BillingInvoice {
   status: Invoice['status'];
   paidAt: string | null;
   createdAt: string;
+  recurring?: boolean;
 }
 
 const toCustomer = (c: BillingCustomer): Customer => ({
@@ -102,6 +147,7 @@ const toInvoice = (i: BillingInvoice): Invoice => ({
   status: i.status,
   paid_at: i.paidAt,
   created_at: i.createdAt,
+  recurring: i.recurring ?? false,
   customers: i.customerName === null ? null : { name: i.customerName, phone: i.customerPhone },
 });
 
@@ -114,9 +160,11 @@ interface NotificationRow {
 }
 
 export const restApi: Api = {
+  features: { team: true, recurring: true },
+
   organization: async () => {
-    const me = await request<{ company: string; demo: boolean }>(`${BILLING}/auth/me`);
-    return { id: 'current', name: me.company, is_demo: me.demo };
+    const current = await me();
+    return { id: 'current', name: current.company ?? '', is_demo: current.demo, role: current.role };
   },
 
   refreshOverdue: async () => 0, // the billing service marks overdue invoices by itself, on a schedule
@@ -132,6 +180,21 @@ export const restApi: Api = {
   pay: async (id) => toInvoice(await post<BillingInvoice>(`${BILLING}/invoices/${id}/pay`)),
   cancel: async (id) => toInvoice(await post<BillingInvoice>(`${BILLING}/invoices/${id}/cancel`)),
 
+  createRecurring: async (body) =>
+    toInvoice(await post<BillingInvoice>(`${BILLING}/recurring`, {
+      customerId: body.customerId, description: body.description, amountCents: body.amountCents, firstDueDate: body.dueDate,
+    })),
+  recurring: async () => (await request<BillingRecurring[]>(`${BILLING}/recurring`)).map(toRecurring),
+  stopRecurring: async (id) => toRecurring(await post<BillingRecurring>(`${BILLING}/recurring/${id}/stop`)),
+
+  team: async () => (await request<BillingMember[]>(`${BILLING}/team`)).map(toMember),
+  addMember: async (email, role) => toMember(await post<BillingMember>(`${BILLING}/team`, { email, role })),
+  changeRole: async (id, role) =>
+    toMember(await request<BillingMember>(`${BILLING}/team/${id}/role`, { method: 'PUT', body: JSON.stringify({ role }) })),
+  removeMember: async (id) => {
+    await request<void>(`${BILLING}/team/${id}`, { method: 'DELETE' });
+  },
+
   notifications: async () =>
     (await request<NotificationRow[]>(`${NOTIFY}/notifications`)).map(
       (row): Notification => ({ id: row.id, to_email: row.to, subject: row.subject, body: row.body, created_at: row.createdAt }),
@@ -140,7 +203,7 @@ export const restApi: Api = {
 
 function accept(result: AuthResponse): null {
   writeToken(result.token);
-  notify({ email: result.email });
+  notify({ email: result.email, pending: result.pending ?? false });
   return null;
 }
 
@@ -148,12 +211,17 @@ export const restAuth: Auth = {
   async getSession() {
     if (!readToken()) return null;
     try {
-      const me = await request<{ email: string }>(`${BILLING}/auth/me`);
-      return { email: me.email };
+      const current = await me();
+      return { email: current.email, pending: current.pending };
     } catch {
       writeToken(null);
       return null;
     }
+  },
+
+  async refresh() {
+    const current = await me();
+    return { email: current.email, pending: current.pending };
   },
 
   onChange(callback) {
@@ -174,11 +242,12 @@ export const restAuth: Auth = {
   },
 
   async signUp(email, password, company) {
+    // no company name = an account that waits for an administrator to add it to an existing company
     try {
       accept(
         await request<AuthResponse>(
           `${BILLING}/auth/register`,
-          { method: 'POST', body: JSON.stringify({ email, password, company }) },
+          { method: 'POST', body: JSON.stringify({ email, password, company: company ?? '' }) },
           false,
         ),
       );

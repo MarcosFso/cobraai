@@ -3,6 +3,7 @@ import { useState, type FormEvent } from 'react';
 import { api } from '../api';
 import { isValidDocument, normalizePhone } from '../document';
 import { formatPhone, parseReaisToCents, todayIso } from '../format';
+import type { NewInvoice } from '../types';
 import { Modal, useToast } from './ui';
 
 export function CustomerModal({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -75,14 +76,19 @@ export function InvoiceModal({ open, onClose, onNeedCustomer }: { open: boolean;
 
 function InvoiceForm({ onDone, onNeedCustomer }: { onDone: () => void; onNeedCustomer?: () => void }) {
   const [form, setForm] = useState({ customerId: '', description: '', amount: '', dueDate: '' });
+  const [monthly, setMonthly] = useState(false);
   const [problem, setProblem] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const toast = useToast();
   const customers = useQuery({ queryKey: ['customers'], queryFn: api.customers });
   const create = useMutation({
-    mutationFn: api.createInvoice,
+    mutationFn: (body: NewInvoice) => (monthly ? api.createRecurring(body) : api.createInvoice(body)),
     onSuccess: () => {
-      toast.success('Cobrança emitida. O aviso ao cliente está na aba Avisos.');
+      toast.success(
+        monthly
+          ? 'Cobrança mensal criada. A primeira já foi emitida; as próximas saem sozinhas.'
+          : 'Cobrança emitida. O aviso ao cliente está na aba Avisos.',
+      );
       void queryClient.invalidateQueries();
       onDone();
     },
@@ -121,20 +127,33 @@ function InvoiceForm({ onDone, onNeedCustomer }: { onDone: () => void; onNeedCus
         Descrição
         <input required maxLength={200} placeholder="Honorários de novembro" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} />
       </label>
+      {api.features.recurring && (
+        <div className="segmented" role="group" aria-label="Frequência da cobrança">
+          <button type="button" className={!monthly ? 'active' : ''} aria-pressed={!monthly} onClick={() => setMonthly(false)}>Só uma vez</button>
+          <button type="button" className={monthly ? 'active' : ''} aria-pressed={monthly} onClick={() => setMonthly(true)}>Todo mês</button>
+        </div>
+      )}
       <div className="two">
         <label>
           Valor (R$)
           <input required inputMode="decimal" placeholder="1.500,00" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
         </label>
         <label>
-          Vencimento
+          {monthly ? 'Primeiro vencimento' : 'Vencimento'}
           <input required type="date" min={todayIso()} value={form.dueDate} onChange={(e) => setForm({ ...form, dueDate: e.target.value })} />
         </label>
       </div>
+      {monthly && (
+        <p className="muted small">
+          Emitimos a primeira agora. As próximas saem sozinhas, todo mês no mesmo dia (5 dias antes do vencimento), até você parar a cobrança.
+        </p>
+      )}
       {problem && <p className="error" role="alert">{problem}</p>}
       <div className="modal-actions">
         <button type="button" className="btn ghost" onClick={onDone}>Cancelar</button>
-        <button className="btn primary" disabled={create.isPending}>{create.isPending ? 'Emitindo…' : 'Emitir cobrança'}</button>
+        <button className="btn primary" disabled={create.isPending}>
+          {create.isPending ? 'Emitindo…' : monthly ? 'Criar cobrança mensal' : 'Emitir cobrança'}
+        </button>
       </div>
     </form>
   );

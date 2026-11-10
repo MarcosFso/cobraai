@@ -43,12 +43,16 @@ app:
     batch-size: 50
   overdue:
     cron: "0 0 1 * * *"
+  recurring:
+    # monthly charges issue their next invoice this many days before it is due
+    advance-days: 5
+    cron: ${RECURRING_CRON:0 10 * * * *}
   cors:
     allowed-origins: ${CORS_ORIGINS:http://localhost:5173}
   jwt:
     # Shared with the report and notification services, which verify the same token. Set a long random value in production.
     secret: ${JWT_SECRET:dev-only-secret-change-me-0123456789abcdef}
-    ttl-hours: 12
+    ttl-hours: ${JWT_TTL_HOURS:4}
   demo:
     max-age-hours: 24
     cleanup-cron: "0 15 * * * *"

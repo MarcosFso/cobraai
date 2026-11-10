@@ -42,6 +42,10 @@ public class Invoice {
     @Column(name = "paid_at")
     private Instant paidAt;
 
+    /** Set when this invoice was issued by a recurring charge. */
+    @Column(name = "recurring_id")
+    private UUID recurringId;
+
     /** Optimistic lock: two simultaneous "pay" requests cannot both succeed. */
     @Version
     private Long version;
@@ -99,6 +103,8 @@ public class Invoice {
         return true;
     }
 
+    public void setRecurringId(UUID recurringId) { this.recurringId = recurringId; }
+    public UUID getRecurringId() { return recurringId; }
     public UUID getId() { return id; }
     public UUID getOrgId() { return orgId; }
     public UUID getCustomerId() { return customerId; }

@@ -40,6 +40,11 @@ public class ApiExceptionHandler {
         return ProblemDetail.forStatusAndDetail(HttpStatus.UNAUTHORIZED, e.getMessage());
     }
 
+    @ExceptionHandler(com.billing.error.ForbiddenException.class)
+    public ProblemDetail forbidden(com.billing.error.ForbiddenException e) {
+        return ProblemDetail.forStatusAndDetail(HttpStatus.FORBIDDEN, e.getMessage());
+    }
+
     @ExceptionHandler(NotFoundException.class)
     public ProblemDetail notFound(NotFoundException e) {
         return ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, e.getMessage());

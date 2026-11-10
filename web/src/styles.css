@@ -275,3 +275,28 @@ tbody tr:last-child td { border-bottom: 0; }
   table.responsive td:first-child::before { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+/* ---------- team, monthly charges, waiting screen ---------- */
+.small-btn { padding: 6px 12px; font-size: 0.8rem; gap: 6px; }
+.view-switch { max-width: 360px; margin-bottom: 16px; }
+.view-switch button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.segmented.kind { margin: 14px 0 4px; }
+tr.inactive { opacity: 0.55; }
+.panel + .panel { margin-top: 18px; }
+.steps { margin: 0 0 14px; padding-left: 20px; display: grid; gap: 4px; }
+.team-form { display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; align-items: end; }
+.team-form .btn { white-space: nowrap; }
+.team-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 4px; }
+.team-list li { display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.team-list li:last-child { border-bottom: 0; }
+.team-list .actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; justify-content: flex-end; }
+.team-list strong { overflow: hidden; text-overflow: ellipsis; }
+.you { margin-left: 8px; padding: 2px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 0.7rem; font-weight: 700; }
+.login-card.waiting { text-align: center; display: grid; gap: 12px; justify-items: center; }
+.login-card.waiting .wide { width: 100%; }
+@media (max-width: 860px) {
+  .team-form { grid-template-columns: 1fr; }
+  .team-list li { flex-wrap: wrap; }
+  .team-list .actions { width: 100%; justify-content: flex-start; padding-left: 48px; }
+}
+.modal .segmented { margin: 14px 0 12px; }

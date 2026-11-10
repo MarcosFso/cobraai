@@ -3,6 +3,7 @@ package com.billing.service;
 import com.billing.domain.AppUser;
 import com.billing.domain.Organization;
 import com.billing.domain.OrganizationRepository;
+import com.billing.domain.Role;
 import com.billing.domain.UserRepository;
 import com.billing.error.BusinessRuleException;
 import com.billing.error.ConflictException;
@@ -18,7 +19,8 @@ import java.util.UUID;
 @Service
 public class AuthService {
 
-    public record AuthResult(String token, String email, String company, boolean demo) {
+    /** {@code company} and {@code role} are null while the person waits for an administrator to add them. */
+    public record AuthResult(String token, String email, String company, boolean demo, String role, boolean pending) {
     }
 
     /** Active demo sandboxes are capped, so nobody can fill the database by pressing the visitor button in a loop. */
@@ -43,7 +45,10 @@ public class AuthService {
         this.dummyHash = passwordEncoder.encode(UUID.randomUUID().toString());
     }
 
-    /** Creates a company and its first user. */
+    /**
+     * Creates an account. With a company name it also creates the company and makes the person its administrator.
+     * Without one, the account waits ("aguardando liberação") until an administrator of an existing company adds it.
+     */
     @Transactional
     public AuthResult register(String company, String email, String password) {
         String normalizedEmail = email == null ? "" : email.trim().toLowerCase();
@@ -57,15 +62,16 @@ public class AuthService {
             throw new BusinessRuleException("A senha pode ter no máximo 72 caracteres");
         }
         String name = company == null ? "" : company.trim();
-        if (name.isEmpty()) {
-            throw new BusinessRuleException("Informe o nome da empresa");
-        }
         if (users.existsByEmailIgnoreCase(normalizedEmail)) {
             throw new ConflictException("Já existe uma conta com esse e-mail");
         }
 
+        if (name.isEmpty()) {
+            AppUser waiting = users.save(new AppUser(null, Role.MEMBER, normalizedEmail, passwordEncoder.encode(password)));
+            return result(waiting, null);
+        }
         Organization org = organizations.save(new Organization(name.length() > 120 ? name.substring(0, 120) : name, false));
-        AppUser user = users.save(new AppUser(org.getId(), normalizedEmail, passwordEncoder.encode(password)));
+        AppUser user = users.save(new AppUser(org.getId(), Role.ADMIN, normalizedEmail, passwordEncoder.encode(password)));
         return result(user, org);
     }
 
@@ -78,9 +84,7 @@ public class AuthService {
         if (user == null || !matches) {
             throw new UnauthorizedException("E-mail ou senha incorretos.");
         }
-        Organization org = organizations.findById(user.getOrgId())
-                .orElseThrow(() -> new UnauthorizedException("E-mail ou senha incorretos."));
-        return result(user, org);
+        return result(user, organizationOf(user));
     }
 
     /** "Entrar como visitante": a brand new sandbox company with sample data, owned by nobody who can log in again. */
@@ -91,12 +95,27 @@ public class AuthService {
         }
         Organization org = organizations.save(new Organization("Empresa Demonstração", true));
         String email = "visitante-" + UUID.randomUUID().toString().substring(0, 8) + "@demo.invalid";
-        AppUser user = users.save(new AppUser(org.getId(), email, passwordEncoder.encode(UUID.randomUUID().toString())));
+        AppUser user = users.save(new AppUser(org.getId(), Role.ADMIN, email, passwordEncoder.encode(UUID.randomUUID().toString())));
         demo.seed(org.getId());
         return result(user, org);
     }
 
+    /** The caller's current state, read from the database: a new token comes back when the token no longer matches it. */
+    @Transactional(readOnly = true)
+    public AuthResult refresh(UUID userId) {
+        AppUser user = users.findById(userId).orElseThrow(() -> new UnauthorizedException("Conta não encontrada. Entre de novo."));
+        return result(user, organizationOf(user));
+    }
+
+    private Organization organizationOf(AppUser user) {
+        if (user.getOrgId() == null) {
+            return null;
+        }
+        return organizations.findById(user.getOrgId()).orElse(null);
+    }
+
     private AuthResult result(AppUser user, Organization org) {
-        return new AuthResult(jwt.issue(user, org), user.getEmail(), org.getName(), org.isDemo());
+        return new AuthResult(jwt.issue(user, org), user.getEmail(), org == null ? null : org.getName(),
+                org != null && org.isDemo(), org == null ? null : user.getRole().name(), org == null);
     }
 }

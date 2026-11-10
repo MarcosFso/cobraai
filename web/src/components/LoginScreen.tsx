@@ -1,9 +1,11 @@
 import { BarChart3, Lock, MessageCircle, ShieldCheck, Sparkles } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
-import { auth } from '../api';
+import { api, auth } from '../api';
 import { DEMO_EMAIL, DEMO_NOTE, DEMO_PASSWORD } from '../supabase';
 
 type Mode = 'login' | 'signup';
+/** Who the new account is for: a brand new company, or a person joining a company that already exists. */
+type Kind = 'company' | 'employee';
 
 const FEATURES = [
   { icon: <Sparkles size={20} />, title: 'Cobranças em poucos cliques', text: 'Emita, acompanhe e dê baixa sem planilha.' },
@@ -14,6 +16,7 @@ const FEATURES = [
 
 export function LoginScreen() {
   const [mode, setMode] = useState<Mode>('login');
+  const [kind, setKind] = useState<Kind>('company');
   const [form, setForm] = useState({ email: '', password: '', company: '' });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +35,7 @@ export function LoginScreen() {
     if (mode === 'login') return signIn(form.email, form.password);
     setBusy(true);
     setError(null);
-    const result = await auth.signUp(form.email, form.password, form.company);
+    const result = await auth.signUp(form.email, form.password, kind === 'employee' ? null : form.company);
     setBusy(false);
     if (result.error) return setError(result.error);
     if (result.needsConfirmation) setNotice('Conta criada! Confirme o e-mail que enviamos para poder entrar.');
@@ -58,8 +61,10 @@ export function LoginScreen() {
 
       <main className="login-side">
         <div className="login-card">
-          <h2>{mode === 'login' ? 'Bem-vindo de volta' : 'Crie a conta da sua empresa'}</h2>
-          <p className="muted">{mode === 'login' ? 'Entre para ver as suas cobranças.' : 'Leva menos de um minuto.'}</p>
+          <h2>{mode === 'login' ? 'Bem-vindo de volta' : kind === 'employee' ? 'Crie o seu acesso' : 'Crie a conta da sua empresa'}</h2>
+          <p className="muted">
+            {mode === 'login' ? 'Entre para ver as suas cobranças.' : kind === 'employee' ? 'O administrador da empresa vai liberar o seu acesso.' : 'Leva menos de um minuto.'}
+          </p>
 
           <button className="btn demo wide" disabled={busy} onClick={() => void signIn(DEMO_EMAIL, DEMO_PASSWORD)}>
             <Sparkles size={18} /> Entrar como visitante
@@ -73,15 +78,22 @@ export function LoginScreen() {
             <button role="tab" aria-selected={mode === 'signup'} className={mode === 'signup' ? 'active' : ''} onClick={() => setMode('signup')}>Criar conta</button>
           </div>
 
+          {mode === 'signup' && api.features.team && (
+            <div className="segmented kind" role="group" aria-label="Tipo de conta">
+              <button type="button" className={kind === 'company' ? 'active' : ''} aria-pressed={kind === 'company'} onClick={() => setKind('company')}>Criar minha empresa</button>
+              <button type="button" className={kind === 'employee' ? 'active' : ''} aria-pressed={kind === 'employee'} onClick={() => setKind('employee')}>Entrar numa empresa</button>
+            </div>
+          )}
+
           <form onSubmit={(event) => void submit(event)}>
-            {mode === 'signup' && (
+            {mode === 'signup' && kind === 'company' && (
               <label>Nome da empresa<input required maxLength={120} value={form.company} onChange={(e) => setForm({ ...form, company: e.target.value })} /></label>
             )}
             <label>E-mail<input required type="email" autoComplete="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} /></label>
             <label>Senha
               <input required type="password" minLength={8} autoComplete={mode === 'login' ? 'current-password' : 'new-password'} value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} />
             </label>
-            <button className="btn primary wide" disabled={busy}>{mode === 'login' ? 'Entrar' : 'Criar conta da empresa'}</button>
+            <button className="btn primary wide" disabled={busy}>{mode === 'login' ? 'Entrar' : kind === 'employee' ? 'Criar conta e aguardar liberação' : 'Criar conta da empresa'}</button>
           </form>
           {error && <p className="error" role="alert">{error}</p>}
           {notice && <p className="ok">{notice}</p>}

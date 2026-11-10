@@ -19,7 +19,7 @@ class InvoiceTest {
     private static final LocalDate DUE = LocalDate.of(2026, 11, 10);
 
     private Invoice open() {
-        return new Invoice(UUID.randomUUID(), "Honorarios", 150_000, DUE);
+        return new Invoice(UUID.randomUUID(), UUID.randomUUID(), "Honorarios", 150_000, DUE);
     }
 
     private Invoice overdue() {

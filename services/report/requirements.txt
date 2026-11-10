@@ -3,3 +3,4 @@ uvicorn[standard]==0.54.0
 aiokafka==0.15.0
 redis==8.1.0
 tzdata
+PyJWT==2.15.1

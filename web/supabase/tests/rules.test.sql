@@ -76,6 +76,7 @@ begin
     assert (public.create_customer('Telefone Fixo', '111.444.777-35', 'fixo@example.com', '+55 (21) 3456-7890')).phone = '552134567890',
            'landline with country code';
     perform test.expect_error($q$select public.create_customer('X', '45.723.174/0001-10', 'x@example.com', '123')$q$, 'Telefone inválido');
+    perform test.expect_error($q$select public.create_customer('X', '45.723.174/0001-10', 'x@example.com', '+1 202 555 0143')$q$, 'Telefone inválido');
 
     perform test.expect_error(format($q$select public.create_invoice(%L, 'Velha', 1000, current_date - 3)$q$, c.id), 'passado');
     perform test.expect_error(format($q$select public.create_invoice(%L, 'Zero', 0, current_date + 5)$q$, c.id), 'maior que zero');

@@ -1,5 +1,6 @@
 package com.billing.web;
 
+import com.billing.security.CurrentUser;
 import com.billing.service.CustomerService;
 import com.billing.web.Dtos.CreateCustomerRequest;
 import com.billing.web.Dtos.CustomerResponse;
@@ -21,24 +22,27 @@ import java.util.UUID;
 public class CustomerController {
 
     private final CustomerService service;
+    private final CurrentUser currentUser;
 
-    public CustomerController(CustomerService service) {
+    public CustomerController(CustomerService service, CurrentUser currentUser) {
         this.service = service;
+        this.currentUser = currentUser;
     }
 
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public CustomerResponse create(@Valid @RequestBody CreateCustomerRequest request) {
-        return CustomerResponse.from(service.create(request.name(), request.document(), request.email()));
+        return CustomerResponse.from(service.create(
+                currentUser.orgId(), request.name(), request.document(), request.email(), request.phone()));
     }
 
     @GetMapping("/{id}")
     public CustomerResponse get(@PathVariable UUID id) {
-        return CustomerResponse.from(service.get(id));
+        return CustomerResponse.from(service.get(currentUser.orgId(), id));
     }
 
     @GetMapping
     public List<CustomerResponse> list() {
-        return service.list().stream().map(CustomerResponse::from).toList();
+        return service.list(currentUser.orgId()).stream().map(CustomerResponse::from).toList();
     }
 }

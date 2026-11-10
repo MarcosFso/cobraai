@@ -30,21 +30,26 @@ public class OutboxPublisher {
     private final OutboxEventRepository outbox;
     private final KafkaTemplate<String, String> kafka;
     private final int batchSize;
+    private final String topic;
 
     public OutboxPublisher(OutboxEventRepository outbox, KafkaTemplate<String, String> kafka,
-                           @Value("${app.outbox.batch-size}") int batchSize) {
+                           @Value("${app.outbox.batch-size}") int batchSize,
+                           @Value("${app.topics.invoice-events}") String topic) {
         this.outbox = outbox;
         this.kafka = kafka;
         this.batchSize = batchSize;
+        this.topic = topic;
     }
 
     @Scheduled(fixedDelayString = "${app.outbox.poll-interval-ms}")
     @Transactional
     public void publishPending() {
-        List<OutboxEvent> batch = outbox.findByPublishedAtIsNullOrderByCreatedAtAsc(PageRequest.of(0, batchSize));
+        List<OutboxEvent> batch = outbox.findByPublishedAtIsNullOrderBySeqAsc(PageRequest.of(0, batchSize));
         for (OutboxEvent event : batch) {
             try {
-                kafka.send(event.getType(), event.getAggregateId(), event.getPayload()).get(10, TimeUnit.SECONDS);
+                // One topic for every event of an invoice, keyed by the invoice id: Kafka only orders messages inside
+                // one partition, so created, paid and overdue of the same invoice must travel together.
+                kafka.send(topic, event.getAggregateId(), event.getPayload()).get(10, TimeUnit.SECONDS);
                 event.markPublished();
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();

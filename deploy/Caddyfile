@@ -3,30 +3,35 @@
 {$SITE_ADDRESS} {
 	encode gzip
 
-	# The microservices version has no user accounts, so the whole site sits behind one shared login.
-	basicauth {
-		{$BASIC_USER} {$BASIC_HASH}
-	}
-
 	header {
 		X-Content-Type-Options nosniff
 		X-Frame-Options SAMEORIGIN
 		Referrer-Policy strict-origin-when-cross-origin
 	}
 
-	# The dashboard calls the two APIs on the same address
+	# The site and its APIs share one address. The APIs check the login token themselves.
 	handle_path /api/billing/* {
 		reverse_proxy billing-service:8080
 	}
 	handle_path /api/report/* {
 		reverse_proxy report-service:8000
 	}
+	handle_path /api/notification/* {
+		reverse_proxy notification-service:3000
+	}
 
-	# Tools for showing the architecture: Kafka messages and the fake inbox
+	# Tools that show the architecture (Kafka messages, the fake inbox). They display the data of EVERY company,
+	# so they are for the owner only, behind a separate password that is never published.
 	handle /kafka* {
+		basicauth {
+			{$BASIC_USER} {$BASIC_HASH}
+		}
 		reverse_proxy kafka-ui:8080
 	}
 	handle /mail* {
+		basicauth {
+			{$BASIC_USER} {$BASIC_HASH}
+		}
 		reverse_proxy mailpit:8025
 	}
 

@@ -9,7 +9,7 @@ import { LoginScreen } from './components/LoginScreen';
 import { CustomerModal, InvoiceModal } from './components/Modals';
 import { NotificationsPage } from './components/NotificationsPage';
 import { Avatar } from './components/ui';
-import { isConfigured } from './supabase';
+import { DEMO_NOTE, isConfigured } from './supabase';
 import { useTheme } from './theme';
 import type { AuthSession } from './types';
 
@@ -93,7 +93,7 @@ function Workspace({ email, dark, toggleTheme }: { email: string; dark: boolean;
 
       <div className="content">
         {org?.is_demo && (
-          <div className="banner">Modo demonstração: dados fictícios, restaurados toda madrugada. Pode mexer à vontade.</div>
+          <div className="banner">Modo demonstração: {DEMO_NOTE} Pode mexer à vontade.</div>
         )}
         <main>
           {tab === 'dashboard' && <Dashboard onNewInvoice={() => setInvoiceModal(true)} />}

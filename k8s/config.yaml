@@ -20,3 +20,5 @@ metadata:
   name: billing-secret
 stringData:
   DB_PASSWORD: billing
+  # Signs the login tokens; billing, report and notification all use it. Generate your own for anything but a local demo.
+  JWT_SECRET: local-demo-secret-change-me-0123456789abcdef0123

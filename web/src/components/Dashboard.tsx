@@ -43,7 +43,8 @@ const tooltipStyle = { background: 'var(--surface)', border: '1px solid var(--li
 
 function MonthlyChart() {
   const year = new Date().getFullYear();
-  const { data } = useQuery({ queryKey: ['monthly', year], queryFn: () => api.monthly(year) });
+  // Totals are rebuilt from events (Kafka), so they can lag a few seconds behind an action: keep them fresh
+  const { data } = useQuery({ queryKey: ['monthly', year], queryFn: () => api.monthly(year), refetchInterval: 5000 });
   const rows = (data ?? []).map((item, index) => ({ month: MONTHS[index], Emitido: item.issuedCents / 100, Recebido: item.receivedCents / 100 }));
   return (
     <section className="panel">
@@ -57,8 +58,8 @@ function MonthlyChart() {
               <YAxis tickFormatter={(value) => `R$ ${Number(value) >= 1000 ? `${Math.round(Number(value) / 1000)} mil` : value}`} width={72} tickLine={false} axisLine={false} stroke="var(--muted)" />
               <Tooltip formatter={(value) => formatBrl(Number(value) * 100)} contentStyle={tooltipStyle} cursor={{ fill: 'var(--hover)' }} />
               <Legend iconType="circle" />
-              <Bar dataKey="Emitido" fill="#a5b4fc" radius={[6, 6, 0, 0]} maxBarSize={22} />
-              <Bar dataKey="Recebido" fill="#10b981" radius={[6, 6, 0, 0]} maxBarSize={22} />
+              <Bar dataKey="Emitido" fill="#a5b4fc" radius={[6, 6, 0, 0]} maxBarSize={22} isAnimationActive={false} />
+              <Bar dataKey="Recebido" fill="#10b981" radius={[6, 6, 0, 0]} maxBarSize={22} isAnimationActive={false} />
             </BarChart>
           </ResponsiveContainer>
         </div>
@@ -79,7 +80,7 @@ function StatusDonut({ invoices }: { invoices: Invoice[] }) {
           <div className="donut">
             <ResponsiveContainer>
               <PieChart>
-                <Pie data={data} dataKey="value" nameKey="name" innerRadius={58} outerRadius={84} paddingAngle={3} stroke="none">
+                <Pie data={data} dataKey="value" nameKey="name" innerRadius={58} outerRadius={84} paddingAngle={3} stroke="none" isAnimationActive={false}>
                   {data.map((item) => <Cell key={item.status} fill={STATUS_COLOR[item.status]} />)}
                 </Pie>
                 <Tooltip contentStyle={tooltipStyle} />
@@ -127,8 +128,8 @@ function InvoiceList({ title, icon, invoices, empty }: { title: string; icon: Re
 }
 
 export function Dashboard({ onNewInvoice }: { onNewInvoice: () => void }) {
-  const summary = useQuery({ queryKey: ['summary'], queryFn: api.summary });
-  const invoices = useQuery({ queryKey: ['invoices'], queryFn: api.invoices });
+  const summary = useQuery({ queryKey: ['summary'], queryFn: api.summary, refetchInterval: 5000 });
+  const invoices = useQuery({ queryKey: ['invoices'], queryFn: api.invoices, refetchInterval: 15000 });
   const all = invoices.data ?? [];
   const open = all.filter((i) => i.status === 'OPEN').sort((a, b) => a.due_date.localeCompare(b.due_date));
   const overdue = all.filter((i) => i.status === 'OVERDUE').sort((a, b) => a.due_date.localeCompare(b.due_date));

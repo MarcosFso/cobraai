@@ -17,6 +17,7 @@ spec:
           ports: [{ containerPort: 8000 }]
           envFrom:
             - configMapRef: { name: billing-config }
+            - secretRef: { name: billing-secret }
           readinessProbe:
             httpGet: { path: /health, port: 8000 }
             periodSeconds: 5

@@ -20,6 +20,9 @@ public class Invoice {
     @Id
     private UUID id;
 
+    @Column(name = "org_id", nullable = false, updatable = false)
+    private UUID orgId;
+
     @Column(name = "customer_id", nullable = false)
     private UUID customerId;
 
@@ -49,14 +52,25 @@ public class Invoice {
     protected Invoice() {
     }
 
-    public Invoice(UUID customerId, String description, long amountCents, LocalDate dueDate) {
+    public Invoice(UUID orgId, UUID customerId, String description, long amountCents, LocalDate dueDate) {
         this.id = UUID.randomUUID();
+        this.orgId = orgId;
         this.customerId = customerId;
         this.description = description;
         this.amountCents = amountCents;
         this.dueDate = dueDate;
         this.status = InvoiceStatus.OPEN;
         this.createdAt = Instant.now();
+    }
+
+    /** Sample data for the demo sandbox: an invoice that already went through part of its life. */
+    public static Invoice seeded(UUID orgId, UUID customerId, String description, long amountCents, LocalDate dueDate,
+                                 InvoiceStatus status, Instant createdAt, Instant paidAt) {
+        Invoice invoice = new Invoice(orgId, customerId, description, amountCents, dueDate);
+        invoice.status = status;
+        invoice.createdAt = createdAt;
+        invoice.paidAt = paidAt;
+        return invoice;
     }
 
     /** OPEN or OVERDUE -> PAID. */
@@ -86,6 +100,7 @@ public class Invoice {
     }
 
     public UUID getId() { return id; }
+    public UUID getOrgId() { return orgId; }
     public UUID getCustomerId() { return customerId; }
     public String getDescription() { return description; }
     public long getAmountCents() { return amountCents; }

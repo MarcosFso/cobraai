@@ -4,7 +4,7 @@ import type { Mailer } from './mailer.js';
 import { buildMessage } from './messages.js';
 import type { NotificationStore } from './store.js';
 
-export type Outcome = 'sent' | 'duplicate' | 'ignored' | 'invalid';
+export type Outcome = 'sent' | 'recorded' | 'duplicate' | 'ignored' | 'invalid';
 
 export class EventHandler {
   constructor(
@@ -23,7 +23,13 @@ export class EventHandler {
       this.log.warn('Discarding invalid event payload');
       return 'invalid';
     }
-    const ctx = { eventId: event.eventId, correlationId: event.correlationId, invoiceId: event.invoiceId, type: event.type };
+    const ctx = {
+      eventId: event.eventId,
+      correlationId: event.correlationId,
+      orgId: event.orgId,
+      invoiceId: event.invoiceId,
+      type: event.type,
+    };
 
     const message = NOTIFIED_TYPES.includes(event.type) ? buildMessage(event) : null;
     if (!message) {
@@ -33,16 +39,25 @@ export class EventHandler {
 
     const claimed = this.store.claim({
       eventId: event.eventId,
+      orgId: event.orgId,
       invoiceId: event.invoiceId,
       customerId: event.customerId,
       customerEmail: event.customerEmail,
       type: event.type,
       subject: message.subject,
-      sentAt: new Date().toISOString(),
+      body: message.text,
+      sentAt: event.occurredAt || new Date().toISOString(),
+      demo: event.demo,
     });
     if (!claimed) {
       this.log.info('Duplicate event ignored', ctx);
       return 'duplicate';
+    }
+
+    if (event.seed) {
+      // Sample data of a demo sandbox: it shows up in the history, but nobody receives an e-mail.
+      this.log.info('Sample notification recorded', ctx);
+      return 'recorded';
     }
 
     try {

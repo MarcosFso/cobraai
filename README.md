@@ -9,7 +9,7 @@ customers. Built to practice event-driven architecture, not because a system thi
 | | Where | Stack | Purpose |
 |---|---|---|---|
 | **Web version** (live demo) | [`web/`](web/README.md) | React + TypeScript on Vercel, Supabase (PostgreSQL, Auth, RLS, pg_cron) | A real product anyone can try: login, test user, one company per account. Runs on free plans. |
-| **Microservices version** | `services/`, `dashboard/` | Java 21 / Spring Boot, Node.js / TypeScript, Python / FastAPI, Kafka, Redis, Docker Compose, Kubernetes manifests | Event-driven architecture: transactional outbox, idempotent consumers, replayable reports. Runs locally with one command. |
+| **Microservices version** | `services/`, `web/` (same site, `VITE_BACKEND=rest`) | Java 21 / Spring Boot, Node.js / TypeScript, Python / FastAPI, Kafka, Redis, Docker Compose, Kubernetes manifests | Event-driven architecture: transactional outbox, idempotent consumers, replayable reports. Runs locally with one command. |
 
 Live demo: _add the Vercel link here after the first deploy_ (use the **visitor** button to log in without signing up).
 
@@ -23,8 +23,8 @@ flowchart LR
   UI -- REST --> R
   B[billing-service<br/>Java 21 / Spring Boot] -- writes --> PG[(PostgreSQL)]
   B -- outbox publisher --> K{{Kafka}}
-  K -- invoice.created / paid / overdue --> N[notification-service<br/>Node 22 / TypeScript]
-  K -- all four topics --> R[report-service<br/>Python / FastAPI]
+  K -- invoice.events --> N[notification-service<br/>Node 22 / TypeScript]
+  K -- invoice.events --> R[report-service<br/>Python / FastAPI]
   N --> M[Mailpit<br/>fake inbox]
   N --> S[(SQLite history)]
   R --> RD[(Redis)]
@@ -43,15 +43,17 @@ docker compose up --build
 
 | What | URL |
 |---|---|
-| Dashboard | http://localhost:5173 |
+| Site (log in, or press "Entrar como visitante") | http://localhost:5173 |
 | Billing API | http://localhost:8080 |
 | Report API | http://localhost:8000/docs |
-| Notification API | http://localhost:3000/notifications?customerId=... |
-| Fake inbox (Mailpit) | http://localhost:8025 |
-| Kafka UI | http://localhost:8090 |
+| Notification API | http://localhost:3000/notifications (needs the login token) |
+| Fake inbox (Mailpit): shows the e-mails of every company | http://localhost:8025 |
+| Kafka UI: shows the messages of every company | http://localhost:8090 |
 
-Try it: create a customer (use a valid CPF such as `529.982.247-25`), issue an invoice, mark it as paid, then look at
-the e-mail in Mailpit and at the numbers on the dashboard.
+Try it: press **Entrar como visitante** (a private sandbox company with sample data), or create your own company account.
+Add a customer (a valid CPF such as `529.982.247-25`, plus a WhatsApp number), issue an invoice, mark it as paid, then look
+at the numbers on the dashboard, the e-mail in Mailpit and the messages in Kafka UI. A step-by-step guide with
+screenshots is in [docs/GUIA-DE-USO.md](docs/GUIA-DE-USO.md).
 
 Low on memory? Start only part of the stack: `docker compose up postgres kafka billing-service`.
 
@@ -89,6 +91,36 @@ Low on memory? Start only part of the stack: `docker compose up postgres kafka b
 An invoice with a due date in the past, a non-positive amount, or an invalid CPF/CNPJ is refused with `400`.
 Event format: [contracts/events.md](contracts/events.md).
 
+## Accounts and data isolation
+
+Every company has its own login (e-mail and password) and sees only its own data.
+
+```
+browser --POST /auth/login--> billing-service ... checks the BCrypt password, signs a token (JWT, HS256) with the company id
+browser --Authorization: Bearer <token>--> billing-service | report-service | notification-service
+                                            each one verifies the signature with the shared secret and reads the company from the token
+```
+
+* **One login for three services.** The billing service signs the token; the report (Python) and notification (Node)
+  services only verify it, so there is no user database to share and no session stored anywhere.
+* **The company comes from the token, never from the request.** Controllers pass it to the services, and every query
+  filters by it. Asking for another company's invoice answers `404`, as if it did not exist.
+* **Events carry `orgId`.** Redis keys and the notification history are kept per company, and a test with two companies
+  and a forged token checks that nothing leaks across billing, Kafka, reports and notifications.
+* **"Entrar como visitante"** creates a private sandbox company with sample data (events flagged `seed`: counted by the
+  report, but no e-mail is sent). Sandboxes are capped and deleted after 24 hours.
+* **WhatsApp**: customers have an optional phone number (validated as a Brazilian number); a button on each open or
+  overdue invoice opens a WhatsApp chat with a ready-made message (free "click to chat" link, no API).
+* The owner tools (Kafka UI and Mailpit) show every company's data, so in the production setup they sit behind a
+  separate password that is not published.
+
+## Screenshots
+
+| | |
+|---|---|
+| ![Login](docs/screenshots/01-login.jpg) | ![Dashboard](docs/screenshots/02-painel.jpg) |
+| ![Invoices](docs/screenshots/03-cobrancas.jpg) | ![Customers](docs/screenshots/05-clientes.jpg) |
+
 ## Services
 
 | Service | Stack | Tests |
@@ -96,12 +128,13 @@ Event format: [contracts/events.md](contracts/events.md).
 | `services/billing` | Java 21, Spring Boot 3.4, JPA, Flyway, Spring Kafka | JUnit 5, Testcontainers |
 | `services/notification` | Node 22, TypeScript, Fastify, KafkaJS, SQLite | Vitest |
 | `services/report` | Python 3.12, FastAPI, aiokafka, Redis | pytest, fakeredis |
-| `dashboard` | React 18, TypeScript, Vite, TanStack Query, Recharts | Vitest |
+| `web` | React 18, TypeScript, Vite, TanStack Query, Recharts (one site for both versions) | Vitest |
 
-Billing API: `POST /customers`, `GET /customers`, `GET /customers/{id}`, `POST /invoices`,
-`GET /invoices?status=OPEN`, `POST /invoices/{id}/pay`, `POST /invoices/{id}/cancel`.
-Report API: `GET /reports/summary`, `GET /reports/monthly?year=`, `GET /reports/overdue`.
-Notification API: `GET /notifications?customerId=`. All services expose `GET /health`.
+Billing API: `POST /auth/register`, `POST /auth/login`, `POST /auth/demo`, `GET /auth/me`, `POST /customers`,
+`GET /customers`, `GET /customers/{id}`, `POST /invoices`, `GET /invoices?status=OPEN`, `POST /invoices/{id}/pay`,
+`POST /invoices/{id}/cancel`. Report API: `GET /reports/summary`, `GET /reports/monthly?year=`, `GET /reports/overdue`.
+Notification API: `GET /notifications`. All of them except `/health` and the three `/auth` entry points need the
+login token. See [Accounts and data isolation](#accounts-and-data-isolation).
 
 ## Develop and test
 
@@ -115,8 +148,8 @@ cd services/notification && npm ci && npm run lint && npm test
 # report
 cd services/report && pip install -r requirements-dev.txt && pytest
 
-# dashboard
-cd dashboard && npm ci && npm run lint && npm test && npm run build
+# site (React, used by both versions)
+cd web && npm ci && npm run lint && npm test && npm run build
 ```
 
 CI: one GitHub Actions workflow per service (only runs when that folder changes): lint, tests, and on `main` a
@@ -141,7 +174,7 @@ docker compose up -d postgres redis kafka mailpit
 docker build -t billing-service:local services/billing
 docker build -t notification-service:local services/notification
 docker build -t report-service:local services/report
-docker build -t dashboard:local dashboard
+docker build -t dashboard:local --build-arg VITE_BACKEND=rest --build-arg VITE_BILLING_URL=http://localhost:8080 --build-arg VITE_REPORT_URL=http://localhost:8000 --build-arg VITE_NOTIFICATION_URL=http://localhost:3000 web
 kind create cluster --name billing --config k8s/kind-config.yaml
 for i in billing-service notification-service report-service dashboard; do kind load docker-image $i:local --name billing; done
 kubectl apply -f k8s/

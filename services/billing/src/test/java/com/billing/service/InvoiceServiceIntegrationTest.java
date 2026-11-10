@@ -1,13 +1,15 @@
 package com.billing.service;
 
 import com.billing.domain.Customer;
-import com.billing.domain.Invoice;
 import com.billing.domain.InvoiceStatus;
+import com.billing.domain.Organization;
+import com.billing.domain.OrganizationRepository;
 import com.billing.domain.OutboxEvent;
 import com.billing.domain.OutboxEventRepository;
 import com.billing.error.BusinessRuleException;
 import com.billing.error.ConflictException;
 import com.billing.error.InvalidTransitionException;
+import com.billing.error.NotFoundException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -16,7 +18,6 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 
-import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
@@ -35,11 +36,11 @@ class InvoiceServiceIntegrationTest {
 
     @Autowired CustomerService customers;
     @Autowired InvoiceService invoices;
+    @Autowired OrganizationRepository organizations;
     @Autowired OutboxEventRepository outbox;
 
-    private Customer newCustomer() {
-        // Unique valid CPFs are hard to generate, so each test uses a fresh CNPJ-like base only once per method.
-        return customers.create("Maria", cpf(), "maria@example.com");
+    private UUID newOrg() {
+        return organizations.save(new Organization("Empresa " + UUID.randomUUID(), false)).getId();
     }
 
     private static int cpfCounter = 0;
@@ -61,81 +62,121 @@ class InvoiceServiceIntegrationTest {
         return r == 10 ? 0 : r;
     }
 
-    private List<OutboxEvent> eventsOf(Invoice invoice) {
-        return outbox.findAll().stream()
-                .filter(e -> e.getAggregateId().equals(invoice.getId().toString()))
-                .toList();
+    private Customer newCustomer(UUID org) {
+        return customers.create(org, "Maria", cpf(), "maria@example.com", "(11) 91234-5678");
+    }
+
+    private List<OutboxEvent> eventsOf(UUID invoiceId) {
+        return outbox.findAll().stream().filter(e -> e.getAggregateId().equals(invoiceId.toString())).toList();
     }
 
     @Test
     void creatingAnInvoiceWritesTheCreatedEventInTheSameTransaction() {
-        Customer c = newCustomer();
-        Invoice i = invoices.create(c.getId(), "Honorarios", 150_000, invoices.today().plusDays(5));
+        UUID org = newOrg();
+        Customer c = newCustomer(org);
+        InvoiceView view = invoices.create(org, c.getId(), "Honorarios", 150_000, invoices.today().plusDays(5));
 
-        List<OutboxEvent> events = eventsOf(i);
+        List<OutboxEvent> events = eventsOf(view.invoice().getId());
         assertEquals(1, events.size());
         assertEquals("invoice.created", events.get(0).getType());
+        assertTrue(events.get(0).getPayload().contains("\"orgId\""), "events carry the company");
         assertTrue(events.get(0).getPayload().contains("\"amountCents\""));
     }
 
     @Test
+    void phoneIsStoredWithTheCountryCode() {
+        UUID org = newOrg();
+        assertEquals("5511912345678", newCustomer(org).getPhone());
+        assertThrows(BusinessRuleException.class,
+                () -> customers.create(org, "Sem Telefone Valido", cpf(), "x@example.com", "123"));
+    }
+
+    @Test
     void payingTwiceIsRefusedAndEmitsOneEvent() {
-        Customer c = newCustomer();
-        Invoice i = invoices.create(c.getId(), "Honorarios", 1_000, invoices.today().plusDays(1));
+        UUID org = newOrg();
+        Customer c = newCustomer(org);
+        UUID id = invoices.create(org, c.getId(), "Honorarios", 1_000, invoices.today().plusDays(1)).invoice().getId();
 
-        invoices.pay(i.getId());
-        assertThrows(InvalidTransitionException.class, () -> invoices.pay(i.getId()));
+        invoices.pay(org, id);
+        assertThrows(InvalidTransitionException.class, () -> invoices.pay(org, id));
 
-        long paidEvents = eventsOf(i).stream().filter(e -> e.getType().equals("invoice.paid")).count();
-        assertEquals(1, paidEvents);
+        assertEquals(1, eventsOf(id).stream().filter(e -> e.getType().equals("invoice.paid")).count());
     }
 
     @Test
     void cancelingEmitsTheCanceledEvent() {
-        Customer c = newCustomer();
-        Invoice i = invoices.create(c.getId(), "Honorarios", 1_000, invoices.today().plusDays(1));
+        UUID org = newOrg();
+        Customer c = newCustomer(org);
+        UUID id = invoices.create(org, c.getId(), "Honorarios", 1_000, invoices.today().plusDays(1)).invoice().getId();
 
-        invoices.cancel(i.getId());
+        invoices.cancel(org, id);
 
-        assertTrue(eventsOf(i).stream().anyMatch(e -> e.getType().equals("invoice.canceled")));
-        assertEquals(InvoiceStatus.CANCELED, invoices.get(i.getId()).getStatus());
+        assertTrue(eventsOf(id).stream().anyMatch(e -> e.getType().equals("invoice.canceled")));
+        assertEquals(InvoiceStatus.CANCELED, invoices.get(org, id).invoice().getStatus());
     }
 
     @Test
     void dueDateInThePastIsRefused() {
-        Customer c = newCustomer();
+        UUID org = newOrg();
+        Customer c = newCustomer(org);
         assertThrows(BusinessRuleException.class,
-                () -> invoices.create(c.getId(), "Old", 1_000, invoices.today().minusDays(1)));
+                () -> invoices.create(org, c.getId(), "Old", 1_000, invoices.today().minusDays(1)));
     }
 
     @Test
     void amountMustBePositive() {
-        Customer c = newCustomer();
+        UUID org = newOrg();
+        Customer c = newCustomer(org);
         assertThrows(BusinessRuleException.class,
-                () -> invoices.create(c.getId(), "Zero", 0, invoices.today().plusDays(1)));
+                () -> invoices.create(org, c.getId(), "Zero", 0, invoices.today().plusDays(1)));
     }
 
     @Test
-    void duplicatedDocumentIsRefused() {
+    void duplicatedDocumentIsRefusedInTheSameCompanyButAllowedInAnother() {
+        UUID a = newOrg();
+        UUID b = newOrg();
         String doc = cpf();
-        customers.create("A", doc, "a@example.com");
-        assertThrows(ConflictException.class, () -> customers.create("B", doc, "b@example.com"));
+        customers.create(a, "A", doc, "a@example.com", null);
+        assertThrows(ConflictException.class, () -> customers.create(a, "B", doc, "b@example.com", null));
+        // the same person can be a customer of two companies
+        customers.create(b, "A na outra empresa", doc, "a@example.com", null);
+    }
+
+    @Test
+    void aCompanyCannotSeeOrChangeAnotherCompanysData() {
+        UUID a = newOrg();
+        UUID b = newOrg();
+        Customer ca = newCustomer(a);
+        UUID invoiceOfA = invoices.create(a, ca.getId(), "Segredo da empresa A", 99_000, invoices.today().plusDays(3))
+                .invoice().getId();
+
+        assertTrue(customers.list(b).isEmpty(), "B sees no customers of A");
+        assertTrue(invoices.list(b, null).isEmpty(), "B sees no invoices of A");
+        assertThrows(NotFoundException.class, () -> customers.get(b, ca.getId()));
+        assertThrows(NotFoundException.class, () -> invoices.get(b, invoiceOfA));
+        assertThrows(NotFoundException.class, () -> invoices.pay(b, invoiceOfA));
+        assertThrows(NotFoundException.class, () -> invoices.cancel(b, invoiceOfA));
+        assertThrows(NotFoundException.class,
+                () -> invoices.create(b, ca.getId(), "Usando o cliente de outra empresa", 1_000, invoices.today().plusDays(1)));
+
+        assertEquals(InvoiceStatus.OPEN, invoices.get(a, invoiceOfA).invoice().getStatus(), "A's invoice is untouched");
     }
 
     @Test
     void unknownCustomerIsRefused() {
-        assertThrows(RuntimeException.class,
-                () -> invoices.create(UUID.randomUUID(), "x", 1_000, invoices.today().plusDays(1)));
+        UUID org = newOrg();
+        assertThrows(NotFoundException.class,
+                () -> invoices.create(org, UUID.randomUUID(), "x", 1_000, invoices.today().plusDays(1)));
     }
 
     @Test
-    void markOverdueEmitsOnlyOnceEvenIfCalledTwice() {
-        Customer c = newCustomer();
-        Invoice i = invoices.create(c.getId(), "Honorarios", 1_000, invoices.today());
+    void markOverdueDoesNothingForAnInvoiceDueToday() {
+        UUID org = newOrg();
+        Customer c = newCustomer(org);
+        UUID id = invoices.create(org, c.getId(), "Honorarios", 1_000, invoices.today()).invoice().getId();
 
         // Due today: not overdue yet (the invoice only becomes OVERDUE the day after).
-        assertEquals(false, invoices.markOverdue(i.getId()));
-        assertTrue(invoices.findOverdueCandidates().stream().noneMatch(id -> id.equals(i.getId())));
-        assertEquals(LocalDate.now(java.time.ZoneId.of("America/Sao_Paulo")), invoices.today());
+        assertEquals(false, invoices.markOverdue(id));
+        assertTrue(invoices.findOverdueCandidates().stream().noneMatch(candidate -> candidate.equals(id)));
     }
 }

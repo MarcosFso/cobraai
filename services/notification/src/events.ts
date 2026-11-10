@@ -6,19 +6,25 @@ export interface InvoiceEvent {
   correlationId: string;
   type: EventType;
   occurredAt: string;
+  orgId: string;
   invoiceId: string;
   customerId: string;
+  customerName: string;
   customerEmail: string;
   amountCents: number;
   dueDate: string;
+  /** The company is a throwaway demo sandbox: its history is deleted after a while. */
+  demo: boolean;
+  /** Sample data of a sandbox: recorded in the history, but no e-mail is sent. */
+  seed: boolean;
 }
 
 /** Event types that produce an e-mail. invoice.canceled is consumed by the report service only. */
 export const NOTIFIED_TYPES: EventType[] = ['invoice.created', 'invoice.paid', 'invoice.overdue'];
 
-const REQUIRED = ['eventId', 'type', 'invoiceId', 'customerId', 'customerEmail', 'amountCents', 'dueDate'] as const;
+const REQUIRED = ['eventId', 'type', 'orgId', 'invoiceId', 'customerId', 'customerEmail', 'amountCents', 'dueDate'] as const;
 
-/** Returns the parsed event, or null when the payload is not a valid event. */
+/** Returns the parsed event, or null when the payload is not a valid event (including events without a company). */
 export function parseEvent(raw: string): InvoiceEvent | null {
   let data: unknown;
   try {
@@ -32,5 +38,5 @@ export function parseEvent(raw: string): InvoiceEvent | null {
     if (obj[key] === undefined || obj[key] === null) return null;
   }
   if (typeof obj.amountCents !== 'number') return null;
-  return { correlationId: 'none', occurredAt: '', ...obj } as unknown as InvoiceEvent;
+  return { correlationId: 'none', occurredAt: '', customerName: '', demo: false, seed: false, ...obj } as unknown as InvoiceEvent;
 }

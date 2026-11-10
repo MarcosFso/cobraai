@@ -105,6 +105,7 @@ services:
       DB_USER: billing
       DB_PASSWORD: ${POSTGRES_PASSWORD:-billing}
       KAFKA_BOOTSTRAP: kafka:19092
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in deploy/.env}
       JAVA_TOOL_OPTIONS: -Xmx448m
       # The nightly job also runs every 10 minutes here, so the demo shows invoices becoming overdue soon after the seed.
       # It is idempotent: only OPEN invoices past the due date are touched.
@@ -121,6 +122,7 @@ services:
       SMTP_HOST: mailpit
       SMTP_PORT: 1025
       DB_PATH: /app/data/notifications.db
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in deploy/.env}
     volumes: [notification-data:/app/data]
     depends_on:
       kafka: { condition: service_healthy }
@@ -133,16 +135,19 @@ services:
     environment:
       KAFKA_BOOTSTRAP: kafka:19092
       REDIS_URL: redis://redis:6379/0
+      JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in deploy/.env}
     depends_on:
       kafka: { condition: service_healthy }
       redis: { condition: service_healthy }
 
   dashboard:
     build:
-      context: ../dashboard
+      context: ../web
       args:
+        VITE_BACKEND: rest
         VITE_BILLING_URL: /api/billing
         VITE_REPORT_URL: /api/report
+        VITE_NOTIFICATION_URL: /api/notification
     restart: unless-stopped
 
 volumes:

@@ -3,7 +3,8 @@ import { config } from './config.js';
 import type { EventHandler } from './handler.js';
 import type { Logger } from './logger.js';
 
-const TOPICS = ['invoice.created', 'invoice.paid', 'invoice.overdue'];
+// One topic carries every event of an invoice, keyed by invoice id, so they arrive in order
+const TOPICS = ['invoice.events'];
 
 /** Connects to Kafka and keeps retrying until the topics exist (billing-service creates them). */
 export async function startConsumer(handler: EventHandler, log: Logger): Promise<void> {

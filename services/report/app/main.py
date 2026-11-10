@@ -2,11 +2,12 @@ import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime
 
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from redis.asyncio import Redis
 
 from . import config
+from .auth import current_org
 from .consumer import run_consumer
 from .logging_setup import setup_logging
 from .store import SAO_PAULO, ReportStore, current_month
@@ -43,10 +44,10 @@ def create_app(store: ReportStore | None = None, start_consumer: bool = True) ->
         return {"status": "UP"}
 
     @app.get("/reports/summary")
-    async def summary():
+    async def summary(org: str = Depends(current_org)):
         month = current_month()
-        totals = await store.totals()
-        current = await store.month(month)
+        totals = await store.totals(org)
+        current = await store.month(org, month)
         return {
             "month": month,
             "issuedCents": current["issuedCents"],
@@ -58,17 +59,17 @@ def create_app(store: ReportStore | None = None, start_consumer: bool = True) ->
         }
 
     @app.get("/reports/monthly")
-    async def monthly(year: int | None = None):
+    async def monthly(year: int | None = None, org: str = Depends(current_org)):
         year = year or datetime.now(SAO_PAULO).year
         months = []
         for number in range(1, 13):
             key = f"{year}-{number:02d}"
-            months.append({"month": key, **await store.month(key)})
+            months.append({"month": key, **await store.month(org, key)})
         return months
 
     @app.get("/reports/overdue")
-    async def overdue():
-        return await store.overdue_invoices()
+    async def overdue(org: str = Depends(current_org)):
+        return await store.overdue_invoices(org)
 
     return app
 

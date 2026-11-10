@@ -78,6 +78,7 @@ services:
       DB_PASSWORD: billing
       KAFKA_BOOTSTRAP: kafka:19092
       CORS_ORIGINS: http://localhost:5173
+      JWT_SECRET: ${JWT_SECRET:-dev-only-secret-change-me-0123456789abcdef}
     depends_on:
       postgres: { condition: service_healthy }
       kafka: { condition: service_healthy } # the topics are created when this service starts
@@ -90,6 +91,8 @@ services:
       SMTP_HOST: mailpit
       SMTP_PORT: 1025
       DB_PATH: /app/data/notifications.db
+      JWT_SECRET: ${JWT_SECRET:-dev-only-secret-change-me-0123456789abcdef}
+      CORS_ORIGINS: http://localhost:5173
     volumes: [notification-data:/app/data]
     depends_on:
       kafka: { condition: service_healthy }
@@ -102,16 +105,19 @@ services:
       KAFKA_BOOTSTRAP: kafka:19092
       REDIS_URL: redis://redis:6379/0
       CORS_ORIGINS: http://localhost:5173
+      JWT_SECRET: ${JWT_SECRET:-dev-only-secret-change-me-0123456789abcdef}
     depends_on:
       kafka: { condition: service_healthy }
       redis: { condition: service_healthy }
 
   dashboard:
     build:
-      context: ./dashboard
+      context: ./web # the same React site as the Vercel version, talking to the microservices
       args:
+        VITE_BACKEND: rest
         VITE_BILLING_URL: http://localhost:8080
         VITE_REPORT_URL: http://localhost:8000
+        VITE_NOTIFICATION_URL: http://localhost:3000
     ports: ["5173:80"]
     depends_on: [billing-service, report-service]
 

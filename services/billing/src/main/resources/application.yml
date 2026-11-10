@@ -36,6 +36,7 @@ app:
   timezone: America/Sao_Paulo
   topics:
     partitions: 3
+    invoice-events: invoice.events
   outbox:
     enabled: true
     poll-interval-ms: 2000
@@ -44,3 +45,10 @@ app:
     cron: "0 0 1 * * *"
   cors:
     allowed-origins: ${CORS_ORIGINS:http://localhost:5173}
+  jwt:
+    # Shared with the report and notification services, which verify the same token. Set a long random value in production.
+    secret: ${JWT_SECRET:dev-only-secret-change-me-0123456789abcdef}
+    ttl-hours: 12
+  demo:
+    max-age-hours: 24
+    cleanup-cron: "0 15 * * * *"

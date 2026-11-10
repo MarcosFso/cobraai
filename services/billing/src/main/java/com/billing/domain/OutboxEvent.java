@@ -32,6 +32,10 @@ public class OutboxEvent {
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
+    /** Strict publish order, assigned by the database. */
+    @Column(name = "seq", insertable = false, updatable = false)
+    private Long seq;
+
     @Column(name = "published_at")
     private Instant publishedAt;
 

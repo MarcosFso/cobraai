@@ -30,6 +30,7 @@ fi
 
 echo "==> Configuration"
 if [ ! -f deploy/.env ]; then
+  # Password of the owner tools only (/kafka and /mail). Companies use the login of the site itself.
   PASSWORD="${2:-$(openssl rand -base64 18 | tr -d '/+=' | cut -c1-12)}"
   HASH="$(sudo docker run --rm caddy:2 caddy hash-password --plaintext "$PASSWORD")"
   {
@@ -37,6 +38,7 @@ if [ ! -f deploy/.env ]; then
     echo "BASIC_USER=visitante"
     echo "BASIC_HASH='$HASH'"
     echo "POSTGRES_PASSWORD=$(openssl rand -base64 18 | tr -d '/+=')"
+    echo "JWT_SECRET=$(openssl rand -hex 32)" # signs the login tokens; shared by the three services
   } > deploy/.env
   chmod 600 deploy/.env
   echo "$PASSWORD" > deploy/.visitor-password
@@ -48,17 +50,11 @@ fi
 echo "==> Building and starting (the first build takes several minutes)"
 $DC up -d --build
 
-echo "==> Demo data"
-DC="$DC" bash deploy/seed-demo.sh
-
-echo "==> Nightly reset at 03:30 Sao Paulo time (06:30 UTC)"
-CRON_LINE="30 6 * * * cd $REPO && bash deploy/reset-demo.sh >> /var/log/billing-reset.log 2>&1"
-( sudo crontab -l 2> /dev/null | grep -v 'deploy/reset-demo.sh' || true; echo "$CRON_LINE" ) | sudo crontab -
-
 echo
 echo "=============================================================="
 echo " Ready:     https://$DOMAIN"
-echo " Login:     visitante / $(cat deploy/.visitor-password)"
-echo " Messages:  https://$DOMAIN/kafka     E-mails: https://$DOMAIN/mail"
+echo ' Anyone can create a company account on the site, or use the visitor button.'
+echo " Owner tools (kafka and mail):  https://$DOMAIN/kafka   https://$DOMAIN/mail"
+echo "   user: visitante   password: $(cat deploy/.visitor-password)   (keep it private)"
 echo " (the HTTPS certificate can take a minute on the first visit)"
 echo "=============================================================="

@@ -5,29 +5,28 @@ import com.billing.domain.CustomerRepository;
 import com.billing.domain.Invoice;
 import com.billing.domain.InvoiceRepository;
 import com.billing.domain.InvoiceStatus;
-import com.billing.domain.OutboxEvent;
-import com.billing.domain.OutboxEventRepository;
+import com.billing.domain.Organization;
+import com.billing.domain.OrganizationRepository;
 import com.billing.error.BusinessRuleException;
 import com.billing.error.NotFoundException;
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.MDC;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDate;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 /**
- * Every state change writes the invoice and its outbox event in the SAME transaction
- * (Transactional Outbox). Nothing in this class talks to Kafka.
+ * Every state change writes the invoice and its outbox event in the SAME transaction (Transactional Outbox).
+ * Nothing in this class talks to Kafka. Every method that serves a user takes the user's company, and all queries
+ * filter by it.
  */
 @Service
 public class InvoiceService {
@@ -36,89 +35,100 @@ public class InvoiceService {
     public static final String PAID = "invoice.paid";
     public static final String OVERDUE = "invoice.overdue";
     public static final String CANCELED = "invoice.canceled";
+    public static final int DEMO_MAX_INVOICES = 120;
 
     private static final Logger log = LoggerFactory.getLogger(InvoiceService.class);
 
     private final InvoiceRepository invoices;
     private final CustomerRepository customers;
-    private final OutboxEventRepository outbox;
-    private final ObjectMapper mapper;
+    private final OrganizationRepository organizations;
+    private final EventRecorder events;
     private final Clock clock;
 
-    public InvoiceService(InvoiceRepository invoices, CustomerRepository customers,
-                          OutboxEventRepository outbox, ObjectMapper mapper, Clock clock) {
+    public InvoiceService(InvoiceRepository invoices, CustomerRepository customers, OrganizationRepository organizations,
+                          EventRecorder events, Clock clock) {
         this.invoices = invoices;
         this.customers = customers;
-        this.outbox = outbox;
-        this.mapper = mapper;
+        this.organizations = organizations;
+        this.events = events;
         this.clock = clock;
     }
 
     @Transactional
-    public Invoice create(UUID customerId, String description, long amountCents, LocalDate dueDate) {
+    public InvoiceView create(UUID orgId, UUID customerId, String description, long amountCents, LocalDate dueDate) {
         if (amountCents <= 0) {
-            throw new BusinessRuleException("amountCents must be greater than zero");
+            throw new BusinessRuleException("O valor precisa ser maior que zero");
         }
         if (dueDate.isBefore(today())) {
-            throw new BusinessRuleException("dueDate cannot be in the past");
+            throw new BusinessRuleException("O vencimento não pode estar no passado");
         }
-        Customer customer = customers.findById(customerId)
-                .orElseThrow(() -> new NotFoundException("Customer not found: " + customerId));
+        Customer customer = customers.findByIdAndOrgId(customerId, orgId)
+                .orElseThrow(() -> new NotFoundException("Cliente não encontrado"));
+        if (organizations.findById(orgId).map(Organization::isDemo).orElse(false)
+                && invoices.countByOrgId(orgId) >= DEMO_MAX_INVOICES) {
+            throw new BusinessRuleException("Limite da demonstração atingido (" + DEMO_MAX_INVOICES + " cobranças)");
+        }
 
-        Invoice invoice = invoices.save(new Invoice(customerId, description.trim(), amountCents, dueDate));
-        record(CREATED, invoice, customer);
-        log.info("Invoice created invoiceId={}", invoice.getId());
-        return invoice;
+        Invoice invoice = invoices.save(new Invoice(orgId, customerId, description.trim(), amountCents, dueDate));
+        events.record(CREATED, invoice, customer, Instant.now(clock), false);
+        log.info("Invoice created invoiceId={} orgId={}", invoice.getId(), orgId);
+        return new InvoiceView(invoice, customer);
     }
 
     @Transactional
-    public Invoice pay(UUID id) {
-        Invoice invoice = find(id);
+    public InvoiceView pay(UUID orgId, UUID id) {
+        Invoice invoice = find(orgId, id);
         invoice.pay(Instant.now(clock));
-        record(PAID, invoice, customerOf(invoice));
-        log.info("Invoice paid invoiceId={}", id);
-        return invoices.saveAndFlush(invoice);
+        Customer customer = customerOf(invoice);
+        events.record(PAID, invoice, customer, Instant.now(clock), false);
+        log.info("Invoice paid invoiceId={} orgId={}", id, orgId);
+        return new InvoiceView(invoices.saveAndFlush(invoice), customer);
     }
 
     @Transactional
-    public Invoice cancel(UUID id) {
-        Invoice invoice = find(id);
+    public InvoiceView cancel(UUID orgId, UUID id) {
+        Invoice invoice = find(orgId, id);
         invoice.cancel();
-        record(CANCELED, invoice, customerOf(invoice));
-        log.info("Invoice canceled invoiceId={}", id);
-        return invoices.saveAndFlush(invoice);
+        Customer customer = customerOf(invoice);
+        events.record(CANCELED, invoice, customer, Instant.now(clock), false);
+        log.info("Invoice canceled invoiceId={} orgId={}", id, orgId);
+        return new InvoiceView(invoices.saveAndFlush(invoice), customer);
     }
 
-    /** Ids of OPEN invoices whose due date already passed (candidates for the daily job). */
+    /** Ids of OPEN invoices (of any company) whose due date already passed: candidates for the daily job. */
     @Transactional(readOnly = true)
     public List<UUID> findOverdueCandidates() {
         return invoices.findByStatusAndDueDateBefore(InvoiceStatus.OPEN, today())
                 .stream().map(Invoice::getId).toList();
     }
 
-    /** One transaction per invoice, so a conflict on one does not roll back the others. */
+    /** One transaction per invoice, so a conflict on one does not roll back the others. Called by the system job. */
     @Transactional
     public boolean markOverdue(UUID id) {
-        Invoice invoice = find(id);
+        Invoice invoice = invoices.findById(id).orElseThrow(() -> new NotFoundException("Cobrança não encontrada"));
         if (!invoice.markOverdue(today())) {
             return false; // already OVERDUE/PAID/CANCELED: running the job twice emits nothing
         }
-        record(OVERDUE, invoice, customerOf(invoice));
+        events.record(OVERDUE, invoice, customerOf(invoice), Instant.now(clock), false);
         invoices.saveAndFlush(invoice);
-        log.info("Invoice marked overdue invoiceId={}", id);
+        log.info("Invoice marked overdue invoiceId={} orgId={}", id, invoice.getOrgId());
         return true;
     }
 
     @Transactional(readOnly = true)
-    public Invoice get(UUID id) {
-        return find(id);
+    public InvoiceView get(UUID orgId, UUID id) {
+        Invoice invoice = find(orgId, id);
+        return new InvoiceView(invoice, customerOf(invoice));
     }
 
     @Transactional(readOnly = true)
-    public List<Invoice> list(InvoiceStatus status) {
-        return status == null
-                ? invoices.findAllByOrderByCreatedAtDesc()
-                : invoices.findByStatusOrderByDueDateAsc(status);
+    public List<InvoiceView> list(UUID orgId, InvoiceStatus status) {
+        Map<UUID, Customer> byId = customers.findByOrgIdOrderByNameAsc(orgId).stream()
+                .collect(Collectors.toMap(Customer::getId, Function.identity()));
+        List<Invoice> rows = status == null
+                ? invoices.findByOrgIdOrderByDueDateDesc(orgId)
+                : invoices.findByOrgIdAndStatusOrderByDueDateAsc(orgId, status);
+        return rows.stream().map(invoice -> new InvoiceView(invoice, byId.get(invoice.getCustomerId()))).toList();
     }
 
     /** "Today" is always computed in America/Sao_Paulo (see Clock bean). */
@@ -126,32 +136,12 @@ public class InvoiceService {
         return LocalDate.now(clock);
     }
 
-    private Invoice find(UUID id) {
-        return invoices.findById(id).orElseThrow(() -> new NotFoundException("Invoice not found: " + id));
+    private Invoice find(UUID orgId, UUID id) {
+        return invoices.findByIdAndOrgId(id, orgId).orElseThrow(() -> new NotFoundException("Cobrança não encontrada"));
     }
 
     private Customer customerOf(Invoice invoice) {
         return customers.findById(invoice.getCustomerId())
-                .orElseThrow(() -> new NotFoundException("Customer not found: " + invoice.getCustomerId()));
-    }
-
-    private void record(String type, Invoice invoice, Customer customer) {
-        UUID eventId = UUID.randomUUID();
-        String correlationId = MDC.get("correlationId");
-        Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("eventId", eventId.toString());
-        payload.put("correlationId", correlationId != null ? correlationId : UUID.randomUUID().toString());
-        payload.put("type", type);
-        payload.put("occurredAt", Instant.now(clock).toString());
-        payload.put("invoiceId", invoice.getId().toString());
-        payload.put("customerId", customer.getId().toString());
-        payload.put("customerEmail", customer.getEmail());
-        payload.put("amountCents", invoice.getAmountCents());
-        payload.put("dueDate", invoice.getDueDate().toString());
-        try {
-            outbox.save(new OutboxEvent(eventId, type, invoice.getId().toString(), mapper.writeValueAsString(payload)));
-        } catch (JsonProcessingException e) {
-            throw new IllegalStateException("Could not serialize event " + type, e);
-        }
+                .orElseThrow(() -> new NotFoundException("Cliente não encontrado"));
     }
 }

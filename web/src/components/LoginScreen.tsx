@@ -1,7 +1,7 @@
 import { BarChart3, Lock, MessageCircle, ShieldCheck, Sparkles } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { auth } from '../api';
-import { DEMO_EMAIL, DEMO_PASSWORD } from '../supabase';
+import { DEMO_EMAIL, DEMO_NOTE, DEMO_PASSWORD } from '../supabase';
 
 type Mode = 'login' | 'signup';
 
@@ -64,7 +64,7 @@ export function LoginScreen() {
           <button className="btn demo wide" disabled={busy} onClick={() => void signIn(DEMO_EMAIL, DEMO_PASSWORD)}>
             <Sparkles size={18} /> Entrar como visitante
           </button>
-          <p className="muted small center-text">Sem cadastro. Dados fictícios, restaurados toda madrugada.</p>
+          <p className="muted small center-text">Sem cadastro. {DEMO_NOTE}</p>
 
           <div className="divider">ou use a sua empresa</div>
 

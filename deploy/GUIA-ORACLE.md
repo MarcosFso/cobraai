@@ -1,6 +1,7 @@
 # Guia: colocar a versão Java + Docker + Kafka no ar (Oracle Cloud grátis)
 
-Resultado: um endereço como `https://seunome.duckdns.org`, ligado 24 horas, com HTTPS e uma senha de visitante.
+Resultado: um endereço como `https://seunome.duckdns.org`, ligado 24 horas, com HTTPS, onde cada empresa cria a sua
+conta e entra com e-mail e senha (ou usa o botão "Entrar como visitante").
 Custo: zero (plano "Always Free" da Oracle). Tempo: cerca de 40 minutos na primeira vez.
 
 ## Parte 1: conta na Oracle
@@ -61,19 +62,22 @@ bash deploy/oracle/bootstrap.sh marcos-cobrancas.duckdns.org
 ```
 
 A primeira instalação demora uns 15 minutos (compila o Java e baixa as imagens). No final aparecem o endereço e a
-senha do visitante. **Anote a senha.** Se quiser escolher a sua, rode com ela no fim:
+**senha do dono**, que protege só as ferramentas `/kafka` e `/mail` (elas mostram os dados de todas as empresas, por
+isso não são públicas). **Anote essa senha e não a divulgue.** Se quiser escolher a sua, rode com ela no fim:
 `bash deploy/oracle/bootstrap.sh marcos-cobrancas.duckdns.org MinhaSenha123`.
 
 Se o repositório já for público, em vez do `gh` basta `git clone https://github.com/MarcosFso/billing-platform.git`.
 
 ## Parte 6: conferir
 
-Abra `https://marcos-cobrancas.duckdns.org` (na primeira visita o certificado leva cerca de 1 minuto). Entre com
-`visitante` e a senha. Você deve ver o painel com dados de exemplo. Em até 10 minutos três cobranças passam a
-"vencidas" sozinhas: é a rotina do Java publicando eventos no Kafka. Para ver as mensagens:
+Abra `https://marcos-cobrancas.duckdns.org` (na primeira visita o certificado leva cerca de 1 minuto). Clique em
+**Entrar como visitante**: você recebe uma empresa de exemplo só sua, com painel, cobranças e clientes. Ou crie a conta
+da sua empresa. O passo a passo de uso, com imagens, está em [../docs/GUIA-DE-USO.md](../docs/GUIA-DE-USO.md).
 
-* `https://marcos-cobrancas.duckdns.org/kafka`: mensagens e tópicos do Kafka.
-* `https://marcos-cobrancas.duckdns.org/mail`: e-mails que o serviço Node.js enviou.
+Para mostrar a arquitetura numa entrevista, abra (pedirá usuário `visitante` e a senha do dono):
+
+* `https://marcos-cobrancas.duckdns.org/kafka`: as mensagens passando pelo Kafka.
+* `https://marcos-cobrancas.duckdns.org/mail`: os e-mails que o serviço Node.js enviou.
 
 ## No dia a dia
 
@@ -86,7 +90,7 @@ $DC logs -f billing-service     # ver o log de um serviço
 git pull && $DC up -d --build   # atualizar para o código mais novo
 ```
 
-Os dados são apagados e recriados toda madrugada (03:30). Para refazer na hora: `bash deploy/reset-demo.sh`.
+As empresas dos visitantes são apagadas sozinhas depois de 24 horas. As contas reais ficam guardadas.
 
 ## Cuidados
 
@@ -94,4 +98,5 @@ Os dados são apagados e recriados toda madrugada (03:30). Para refazer na hora:
   recolher recursos gratuitos ociosos. Esta pilha usa bastante memória, o que ajuda a evitar isso, mas visite o
   endereço de vez em quando.
 * Guarde o arquivo `.key`: ele é a única chave do servidor.
-* Quem tiver a senha do visitante vê e altera os dados da demonstração. Não use dados reais.
+* A senha do dono dá acesso a `/kafka` e `/mail`, que mostram os dados de todas as empresas. Não a divulgue.
+* Se for usar com clientes de verdade, guarde o arquivo `deploy/.env` (tem o segredo do login e a senha do banco).

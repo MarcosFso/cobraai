@@ -239,7 +239,8 @@ begin
     end if;
     if v_phone is not null then
         if length(v_phone) in (10, 11) then v_phone := '55' || v_phone; end if; -- DDD + number: add the country code
-        if v_phone !~ '^55[0-9]{10,11}$' then
+        -- 55 + DDD (2 digits, no zeros) + 9 digits starting with 9 (mobile) or 8 digits starting with 2-5 (landline)
+        if v_phone !~ '^55[1-9][1-9](9[0-9]{8}|[2-5][0-9]{7})$' then
             raise exception 'Telefone inválido. Use o DDD e o número, por exemplo (11) 91234-5678' using errcode = '22023';
         end if;
     end if;

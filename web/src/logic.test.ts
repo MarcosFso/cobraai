@@ -27,6 +27,7 @@ describe('phone', () => {
     expect(normalizePhone('+55 (11) 91234-5678')).toBe('5511912345678');
     expect(normalizePhone('')).toBeNull();
     expect(normalizePhone('123')).toBeNull();
+    expect(normalizePhone('+1 202 555 0143')).toBeNull(); // a US number is not a Brazilian one
   });
 
   it('masks while typing', () => {

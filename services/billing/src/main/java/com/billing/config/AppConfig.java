@@ -37,12 +37,9 @@ public class AppConfig implements WebMvcConfigurer {
     /** Topics keep messages forever (retention.ms=-1) so the report service can rebuild from "earliest". */
     @Bean
     @ConditionalOnProperty(name = "app.topics.create", havingValue = "true", matchIfMissing = true)
-    KafkaAdmin.NewTopics invoiceTopics(@Value("${app.topics.partitions}") int partitions) {
-        return new KafkaAdmin.NewTopics(
-                topic("invoice.created", partitions),
-                topic("invoice.paid", partitions),
-                topic("invoice.overdue", partitions),
-                topic("invoice.canceled", partitions));
+    KafkaAdmin.NewTopics invoiceTopics(@Value("${app.topics.partitions}") int partitions,
+                                       @Value("${app.topics.invoice-events}") String invoiceEvents) {
+        return new KafkaAdmin.NewTopics(topic(invoiceEvents, partitions));
     }
 
     private static NewTopic topic(String name, int partitions) {

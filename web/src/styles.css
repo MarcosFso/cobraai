@@ -54,7 +54,7 @@ button, input, select { font: inherit; color: inherit; }
 .muted { color: var(--muted); }
 .small { font-size: 0.8rem; }
 .error { color: var(--bad); margin-top: 10px; }
-.ok { color: var(--good); margin-top: 10px; }
+p.ok { color: var(--good); margin-top: 10px; }
 .late { color: var(--bad); font-weight: 600; font-size: 0.82rem; }
 .center-text { text-align: center; }
 .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
@@ -136,6 +136,7 @@ input:focus, select:focus { outline: 3px solid var(--accent-soft); border-color:
 .kpi.rose strong { color: var(--bad); }
 .grid-main { display: grid; grid-template-columns: 2fr 1fr; gap: 14px; margin-bottom: 14px; }
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.grid-main > *, .grid-2 > * { min-width: 0; } /* let a column shrink instead of being widened by long text */
 .chart { width: 100%; height: 270px; }
 .donut { position: relative; height: 190px; }
 .donut-center { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; pointer-events: none; }
@@ -148,9 +149,15 @@ input:focus, select:focus { outline: 3px solid var(--accent-soft); border-color:
 
 /* ---------- lists, tables ---------- */
 .rows { list-style: none; margin: 0; padding: 0; }
-.rows li { display: flex; align-items: center; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+.rows li { display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; column-gap: 12px; row-gap: 8px; align-items: center; padding: 12px 0; border-bottom: 1px solid var(--line); }
+/* buttons go on a second line under the name, so the name and the description keep their room */
+.rows li .actions { grid-column: 2 / -1; justify-content: flex-start; }
 .rows li:last-child { border-bottom: 0; padding-bottom: 0; }
 .right { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; text-align: right; }
+/* Rows in half-width panels: the name and description shrink with an ellipsis, the amount and buttons never wrap */
+.rows li .grow strong, .rows li .grow span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rows li .right, .rows li .actions { flex: none; }
+.rows li .right strong, .rows li .right span { white-space: nowrap; }
 .avatar { border-radius: 50%; display: inline-grid; place-items: center; color: #fff; font-weight: 700; flex: none; }
 .who-cell { display: flex; align-items: center; gap: 12px; }
 .who-cell > div { display: flex; flex-direction: column; min-width: 0; }

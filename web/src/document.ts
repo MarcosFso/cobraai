@@ -30,5 +30,6 @@ export function normalizePhone(raw: string): string | null {
   const digits = raw.replace(/\D/g, '');
   if (!digits) return null;
   const withCountry = digits.length === 10 || digits.length === 11 ? `55${digits}` : digits;
-  return /^55\d{10,11}$/.test(withCountry) ? withCountry : null;
+  // 55 + DDD (2 digits, no zeros) + 9 digits starting with 9 (mobile) or 8 digits starting with 2-5 (landline)
+  return /^55[1-9][1-9](9\d{8}|[2-5]\d{7})$/.test(withCountry) ? withCountry : null;
 }

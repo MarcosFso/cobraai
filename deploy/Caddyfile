@@ -1,0 +1,36 @@
+# One public address. Caddy gets the HTTPS certificate by itself when SITE_ADDRESS is a real domain.
+# For a local test use SITE_ADDRESS=http://localhost (plain HTTP).
+{$SITE_ADDRESS} {
+	encode gzip
+
+	# The microservices version has no user accounts, so the whole site sits behind one shared login.
+	basicauth {
+		{$BASIC_USER} {$BASIC_HASH}
+	}
+
+	header {
+		X-Content-Type-Options nosniff
+		X-Frame-Options SAMEORIGIN
+		Referrer-Policy strict-origin-when-cross-origin
+	}
+
+	# The dashboard calls the two APIs on the same address
+	handle_path /api/billing/* {
+		reverse_proxy billing-service:8080
+	}
+	handle_path /api/report/* {
+		reverse_proxy report-service:8000
+	}
+
+	# Tools for showing the architecture: Kafka messages and the fake inbox
+	handle /kafka* {
+		reverse_proxy kafka-ui:8080
+	}
+	handle /mail* {
+		reverse_proxy mailpit:8025
+	}
+
+	handle {
+		reverse_proxy dashboard:80
+	}
+}

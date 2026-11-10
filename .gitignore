@@ -10,3 +10,5 @@ __pycache__/
 .env
 .env.local
 *.local
+deploy/.env
+deploy/.visitor-password

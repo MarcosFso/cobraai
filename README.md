@@ -13,6 +13,8 @@ customers. Built to practice event-driven architecture, not because a system thi
 
 Live demo: _add the Vercel link here after the first deploy_ (use the **visitor** button to log in without signing up).
 
+The microservices version can also be hosted online for free on one Oracle Cloud Always Free VM (HTTPS, shared login, nightly reset): see [deploy/](deploy/README.md).
+
 ## Microservices version
 
 ```mermaid

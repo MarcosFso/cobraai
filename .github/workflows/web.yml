@@ -1,0 +1,55 @@
+name: web
+
+on:
+  push:
+    paths: ["web/**", ".github/workflows/web.yml"]
+  pull_request:
+    paths: ["web/**"]
+
+jobs:
+  sql-tests:
+    name: database tests (PostgreSQL 16)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: pg
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U postgres" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      PGHOST: localhost
+      PGUSER: postgres
+      PGPASSWORD: pg
+    steps:
+      - uses: actions/checkout@v7
+      - name: Supabase stand-in, schema and tests
+        working-directory: web/supabase
+        run: |
+          psql -v ON_ERROR_STOP=1 -q -f tests/00_supabase_stub.sql
+          psql -v ON_ERROR_STOP=1 -q -f setup.sql
+          psql -v ON_ERROR_STOP=1 -q -f tests/rules.test.sql
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - name: Lint (type check)
+        run: npm run lint
+      - name: Test (Vitest)
+        run: npm test
+      - name: Build
+        run: npm run build
+        env:
+          VITE_SUPABASE_URL: https://example.supabase.co
+          VITE_SUPABASE_ANON_KEY: ci-placeholder

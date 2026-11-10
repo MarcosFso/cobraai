@@ -1,0 +1,24 @@
+name: keep-alive
+
+# Supabase free projects are paused after about a week without activity. One harmless request every few days avoids it.
+# Set the repository variable SUPABASE_URL and the secret SUPABASE_ANON_KEY (both public values) to enable it.
+on:
+  schedule:
+    - cron: "17 9 */3 * *"
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping the Supabase API
+        env:
+          SUPABASE_URL: ${{ vars.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        run: |
+          if [ -z "$SUPABASE_URL" ] || [ -z "$SUPABASE_ANON_KEY" ]; then
+            echo "SUPABASE_URL / SUPABASE_ANON_KEY not set, nothing to do"; exit 0
+          fi
+          code=$(curl -s -o /dev/null -w "%{http_code}" "$SUPABASE_URL/auth/v1/health" -H "apikey: $SUPABASE_ANON_KEY")
+          echo "auth health: HTTP $code"
+          test "$code" = "200"

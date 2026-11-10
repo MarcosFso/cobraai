@@ -1,0 +1,13 @@
+import { createClient } from '@supabase/supabase-js';
+
+const url = import.meta.env.VITE_SUPABASE_URL;
+const anonKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
+
+export const isConfigured = Boolean(url && anonKey);
+
+// The anon key is public by design: what a user can read or change is decided by row level security in the database.
+export const supabase = createClient(url ?? 'http://localhost:54321', anonKey ?? 'not-configured');
+
+// Public test account (created by supabase/setup.sql). Its data is fictional and reset every night.
+export const DEMO_EMAIL = 'demo@example.com';
+export const DEMO_PASSWORD = 'Demo-2026!';

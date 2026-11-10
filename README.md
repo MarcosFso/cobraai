@@ -4,6 +4,17 @@ Microservices with Java, Node.js, Python and Kafka. Small businesses issue invoi
 customers. Built to practice event-driven architecture, not because a system this small needs four services
 (it could be one, and I know that).
 
+## Two versions
+
+| | Where | Stack | Purpose |
+|---|---|---|---|
+| **Web version** (live demo) | [`web/`](web/README.md) | React + TypeScript on Vercel, Supabase (PostgreSQL, Auth, RLS, pg_cron) | A real product anyone can try: login, test user, one company per account. Runs on free plans. |
+| **Microservices version** | `services/`, `dashboard/` | Java 21 / Spring Boot, Node.js / TypeScript, Python / FastAPI, Kafka, Redis, Docker Compose, Kubernetes manifests | Event-driven architecture: transactional outbox, idempotent consumers, replayable reports. Runs locally with one command. |
+
+Live demo: _add the Vercel link here after the first deploy_ (use the **visitor** button to log in without signing up).
+
+## Microservices version
+
 ```mermaid
 flowchart LR
   UI[Dashboard<br/>React + TypeScript] -- REST --> B

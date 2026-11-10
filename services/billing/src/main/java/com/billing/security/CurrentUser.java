@@ -35,6 +35,9 @@ public class CurrentUser {
     /** The caller, who must belong to the company named in the token. */
     public AppUser member() {
         AppUser user = user();
+        if (user.isMustChangePassword()) { // an administrator reset the password: even an older, still valid token stops here
+            throw new UnauthorizedException("A sua senha foi redefinida. Entre de novo e escolha uma nova.");
+        }
         String claim = jwt().getClaimAsString("org");
         if (claim == null || user.getOrgId() == null || !claim.equals(user.getOrgId().toString())) {
             throw new UnauthorizedException("Sem acesso a uma empresa. Entre de novo.");

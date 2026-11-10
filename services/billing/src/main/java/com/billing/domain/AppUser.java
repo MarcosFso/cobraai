@@ -32,6 +32,10 @@ public class AppUser {
     @Column(nullable = false, length = 10)
     private Role role;
 
+    /** True after an administrator reset the password: the person must choose a new one before anything else. */
+    @Column(name = "must_change_password", nullable = false)
+    private boolean mustChangePassword;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
@@ -60,6 +64,20 @@ public class AppUser {
     }
 
     public void changeRole(Role role) { this.role = role; }
+
+    /** The administrator's reset: a temporary password that has to be replaced at the next login. */
+    public void resetPassword(String newHash) {
+        this.passwordHash = newHash;
+        this.mustChangePassword = true;
+    }
+
+    /** The person chose their own password. */
+    public void changePassword(String newHash) {
+        this.passwordHash = newHash;
+        this.mustChangePassword = false;
+    }
+
+    public boolean isMustChangePassword() { return mustChangePassword; }
 
     public UUID getId() { return id; }
     public UUID getOrgId() { return orgId; }

@@ -35,17 +35,27 @@ public final class Dtos {
     public record LoginRequest(@NotBlank @Size(max = 160) String email, @NotBlank @Size(max = 100) String password) {
     }
 
-    public record AuthResponse(String token, String email, String company, boolean demo, String role, boolean pending) {
+    public record AuthResponse(String token, String email, String company, boolean demo, String role, boolean pending,
+                               boolean mustChangePassword) {
         public static AuthResponse from(AuthResult result) {
-            return new AuthResponse(result.token(), result.email(), result.company(), result.demo(), result.role(), result.pending());
+            return new AuthResponse(result.token(), result.email(), result.company(), result.demo(), result.role(), result.pending(),
+                    result.mustChangePassword());
         }
     }
 
     /** {@code token} is present only when the one in use is out of date (the person was added to or removed from a company). */
-    public record MeResponse(String email, String company, boolean demo, String role, boolean pending, String token) {
+    public record MeResponse(String email, String company, boolean demo, String role, boolean pending,
+                             boolean mustChangePassword, String token) {
+    }
+
+    public record ChangePasswordRequest(@NotBlank @Size(max = 100) String currentPassword,
+                                        @NotBlank @Size(max = 100) String newPassword) {
     }
 
     // ----- team -----
+
+    public record TemporaryPasswordResponse(String temporaryPassword) {
+    }
 
     public record AddMemberRequest(@NotBlank @Size(max = 160) String email, Role role) {
     }
@@ -53,9 +63,10 @@ public final class Dtos {
     public record RoleRequest(@NotNull Role role) {
     }
 
-    public record MemberResponse(UUID id, String email, Role role, boolean you, Instant createdAt) {
+    public record MemberResponse(UUID id, String email, Role role, boolean you, Instant createdAt, boolean passwordResetPending) {
         public static MemberResponse from(AppUser user, UUID currentUserId) {
-            return new MemberResponse(user.getId(), user.getEmail(), user.getRole(), user.getId().equals(currentUserId), user.getCreatedAt());
+            return new MemberResponse(user.getId(), user.getEmail(), user.getRole(), user.getId().equals(currentUserId), user.getCreatedAt(),
+                    user.isMustChangePassword());
         }
     }
 

@@ -41,6 +41,8 @@ export interface Member {
   email: string;
   role: Role;
   you: boolean;
+  /** An administrator reset this person's password and they have not chosen a new one yet. */
+  password_reset_pending?: boolean;
 }
 
 /** A monthly charge: the next invoice is issued automatically a few days before its due date. */
@@ -142,12 +144,16 @@ export interface Api {
   addMember(email: string, role: Role): Promise<Member>;
   changeRole(id: string, role: Role): Promise<Member>;
   removeMember(id: string): Promise<void>;
+  /** Sets a temporary password for a member; resolves to it (shown to the administrator only once). */
+  resetPassword(id: string): Promise<string>;
 }
 
 export interface AuthSession {
   email: string;
   /** Account created without a company: waits for an administrator to add it. */
   pending?: boolean;
+  /** An administrator reset the password: a new one must be chosen before anything else. */
+  mustChangePassword?: boolean;
 }
 
 export interface Auth {
@@ -158,5 +164,7 @@ export interface Auth {
   signUp(email: string, password: string, company: string | null): Promise<{ error?: string; needsConfirmation?: boolean }>;
   /** Asks the server for the current state (for example, after an administrator added this account to a company). */
   refresh?(): Promise<AuthSession | null>;
+  /** Resolves to an error message, or null on success. */
+  changePassword?(currentPassword: string, newPassword: string): Promise<string | null>;
   signOut(): Promise<void>;
 }

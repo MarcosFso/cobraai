@@ -6,6 +6,7 @@ import com.billing.service.TeamService;
 import com.billing.web.Dtos.AddMemberRequest;
 import com.billing.web.Dtos.MemberResponse;
 import com.billing.web.Dtos.RoleRequest;
+import com.billing.web.Dtos.TemporaryPasswordResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -51,6 +52,13 @@ public class TeamController {
     public MemberResponse changeRole(@PathVariable UUID id, @Valid @RequestBody RoleRequest request) {
         AppUser admin = currentUser.admin();
         return MemberResponse.from(service.changeRole(admin.getOrgId(), id, request.role()), admin.getId());
+    }
+
+    /** Sets a temporary password for someone of the company. It is in the answer only once. */
+    @PostMapping("/{id}/reset-password")
+    public TemporaryPasswordResponse resetPassword(@PathVariable UUID id) {
+        AppUser admin = currentUser.admin();
+        return new TemporaryPasswordResponse(service.resetPassword(admin.getOrgId(), admin.getId(), id));
     }
 
     @DeleteMapping("/{id}")

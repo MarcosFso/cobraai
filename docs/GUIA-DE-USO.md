@@ -175,6 +175,36 @@ Permissões:
   só libera quem criou a conta sem empresa.
 * Na demonstração a equipe fica desligada (a empresa é apagada em 24 horas).
 
+### Esqueci a senha
+
+Não há e-mail de recuperação. Quem resolve é o administrador:
+
+![Senha temporária](screenshots/20-senha-temporaria.jpg)
+
+1. O administrador abre **Equipe** e clica em **Redefinir senha** ao lado da pessoa.
+2. Aparece uma **senha temporária, uma única vez**. Ele copia e passa para a pessoa (pessoalmente, por WhatsApp...).
+   A senha antiga deixa de valer na hora, e qualquer sessão aberta da pessoa é encerrada.
+3. A pessoa entra com a senha temporária e vê o aviso **"O administrador mudou a senha da conta. Escolha uma nova
+   agora"**. Nada mais abre até ela escolher a senha nova (mínimo de 8 caracteres, diferente da temporária).
+![Troca obrigatória](screenshots/21-trocar-senha-obrigatoria.jpg)
+
+4. Na lista da equipe, quem ainda não trocou aparece com "aguardando troca de senha".
+
+Outras regras:
+
+* O administrador **não redefine a própria senha** por essa tela. Para trocar a sua, use **Equipe → Minha senha** (precisa
+  da senha atual). Se você é o único administrador e esqueceu a senha, use o script do servidor, no fim deste guia.
+* Uma pessoa de outra empresa nunca é afetada: o administrador só enxerga a própria equipe.
+
+**Para o dono do sistema (esqueceu a própria senha).** No servidor da Oracle:
+
+```bash
+cd ~/billing-platform
+bash deploy/reset-password.sh seu-email@empresa.com
+```
+
+O script imprime uma senha temporária e a conta passa pela mesma tela de troca obrigatória.
+
 ## 9. Para mostrar numa entrevista
 
 1. Entre como visitante e mostre o painel com números e o gráfico.

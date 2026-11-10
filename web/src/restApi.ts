@@ -64,6 +64,7 @@ interface AuthResponse {
   token: string;
   email: string;
   pending?: boolean;
+  mustChangePassword?: boolean;
 }
 
 interface MeResponse {
@@ -72,6 +73,7 @@ interface MeResponse {
   demo: boolean;
   role: Role | null;
   pending: boolean;
+  mustChangePassword?: boolean;
   /** Only present when the token in use is out of date. */
   token?: string;
 }
@@ -92,6 +94,7 @@ interface BillingMember {
   email: string;
   role: Role;
   you: boolean;
+  passwordResetPending?: boolean;
 }
 
 interface ReportRisk {
@@ -120,7 +123,9 @@ const toRecurring = (r: BillingRecurring): Recurring => ({
   amount_cents: r.amountCents, day_of_month: r.dayOfMonth, next_due_date: r.nextDueDate, active: r.active,
 });
 
-const toMember = (m: BillingMember): Member => ({ id: m.id, email: m.email, role: m.role, you: m.you });
+const toMember = (m: BillingMember): Member => ({
+  id: m.id, email: m.email, role: m.role, you: m.you, password_reset_pending: m.passwordResetPending ?? false,
+});
 
 /** Asks who the caller is, and keeps the stored token current when an administrator changed the account. */
 async function me(): Promise<MeResponse> {
@@ -223,6 +228,7 @@ export const restApi: Api = {
   addMember: async (email, role) => toMember(await post<BillingMember>(`${BILLING}/team`, { email, role })),
   changeRole: async (id, role) =>
     toMember(await request<BillingMember>(`${BILLING}/team/${id}/role`, { method: 'PUT', body: JSON.stringify({ role }) })),
+  resetPassword: async (id) => (await post<{ temporaryPassword: string }>(`${BILLING}/team/${id}/reset-password`)).temporaryPassword,
   removeMember: async (id) => {
     await request<void>(`${BILLING}/team/${id}`, { method: 'DELETE' });
   },
@@ -235,7 +241,7 @@ export const restApi: Api = {
 
 function accept(result: AuthResponse): null {
   writeToken(result.token);
-  notify({ email: result.email, pending: result.pending ?? false });
+  notify({ email: result.email, pending: result.pending ?? false, mustChangePassword: result.mustChangePassword ?? false });
   return null;
 }
 
@@ -244,7 +250,7 @@ export const restAuth: Auth = {
     if (!readToken()) return null;
     try {
       const current = await me();
-      return { email: current.email, pending: current.pending };
+      return { email: current.email, pending: current.pending, mustChangePassword: current.mustChangePassword ?? false };
     } catch {
       writeToken(null);
       return null;
@@ -253,7 +259,16 @@ export const restAuth: Auth = {
 
   async refresh() {
     const current = await me();
-    return { email: current.email, pending: current.pending };
+    return { email: current.email, pending: current.pending, mustChangePassword: current.mustChangePassword ?? false };
+  },
+
+  async changePassword(currentPassword, newPassword) {
+    try {
+      accept(await post<AuthResponse>(`${BILLING}/auth/password`, { currentPassword, newPassword }));
+      return null;
+    } catch (error) {
+      return (error as Error).message;
+    }
   },
 
   onChange(callback) {

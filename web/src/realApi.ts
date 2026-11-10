@@ -28,6 +28,7 @@ export const realApi: Api = {
   addMember: unavailable,
   changeRole: unavailable,
   removeMember: unavailable,
+  resetPassword: unavailable,
 
   organization: async () =>
     unwrap(await supabase.from('organizations').select('id, name, is_demo').limit(1).maybeSingle<Organization>()),
@@ -90,6 +91,10 @@ export const realAuth: Auth = {
     const { data, error } = await supabase.auth.signUp({ email, password, options: { data: { company } } });
     if (error) return { error: error.message };
     return { needsConfirmation: !data.session };
+  },
+  async changePassword(_current, next) {
+    const { error } = await supabase.auth.updateUser({ password: next });
+    return error ? error.message : null;
   },
   async signOut() {
     await supabase.auth.signOut();

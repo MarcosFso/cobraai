@@ -20,7 +20,8 @@ import java.util.UUID;
 public class AuthService {
 
     /** {@code company} and {@code role} are null while the person waits for an administrator to add them. */
-    public record AuthResult(String token, String email, String company, boolean demo, String role, boolean pending) {
+    public record AuthResult(String token, String email, String company, boolean demo, String role, boolean pending,
+                             boolean mustChangePassword) {
     }
 
     /** Active demo sandboxes are capped, so nobody can fill the database by pressing the visitor button in a loop. */
@@ -55,12 +56,7 @@ public class AuthService {
         if (!normalizedEmail.matches("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$") || normalizedEmail.length() > 160) {
             throw new BusinessRuleException("E-mail inválido");
         }
-        if (password == null || password.length() < 8) {
-            throw new BusinessRuleException("A senha precisa ter pelo menos 8 caracteres");
-        }
-        if (password.getBytes(StandardCharsets.UTF_8).length > 72) { // BCrypt only reads the first 72 bytes
-            throw new BusinessRuleException("A senha pode ter no máximo 72 caracteres");
-        }
+        validatePassword(password);
         String name = company == null ? "" : company.trim();
         if (users.existsByEmailIgnoreCase(normalizedEmail)) {
             throw new ConflictException("Já existe uma conta com esse e-mail");
@@ -100,6 +96,34 @@ public class AuthService {
         return result(user, org);
     }
 
+    private static void validatePassword(String password) {
+        if (password == null || password.length() < 8) {
+            throw new BusinessRuleException("A senha precisa ter pelo menos 8 caracteres");
+        }
+        if (password.getBytes(StandardCharsets.UTF_8).length > 72) { // BCrypt only reads the first 72 bytes
+            throw new BusinessRuleException("A senha pode ter no máximo 72 caracteres");
+        }
+    }
+
+    /**
+     * The person chooses a new password, proving they know the current one (the temporary one, after an
+     * administrator's reset). Returns a normal login, since the person is now free to use the system.
+     */
+    @Transactional
+    public AuthResult changePassword(UUID userId, String currentPassword, String newPassword) {
+        AppUser user = users.findById(userId).orElseThrow(() -> new UnauthorizedException("Conta não encontrada. Entre de novo."));
+        if (currentPassword == null || !passwordEncoder.matches(currentPassword, user.getPasswordHash())) {
+            throw new BusinessRuleException("A senha atual está incorreta");
+        }
+        validatePassword(newPassword);
+        if (newPassword.equals(currentPassword)) {
+            throw new BusinessRuleException("A nova senha precisa ser diferente da atual");
+        }
+        user.changePassword(passwordEncoder.encode(newPassword));
+        users.saveAndFlush(user);
+        return result(user, organizationOf(user));
+    }
+
     /** The caller's current state, read from the database: a new token comes back when the token no longer matches it. */
     @Transactional(readOnly = true)
     public AuthResult refresh(UUID userId) {
@@ -115,7 +139,10 @@ public class AuthService {
     }
 
     private AuthResult result(AppUser user, Organization org) {
-        return new AuthResult(jwt.issue(user, org), user.getEmail(), org == null ? null : org.getName(),
-                org != null && org.isDemo(), org == null ? null : user.getRole().name(), org == null);
+        // While the password must be changed the token carries no company, so the report and notification
+        // services refuse it just like they refuse an account waiting for a company.
+        boolean mustChange = user.isMustChangePassword();
+        return new AuthResult(jwt.issue(user, mustChange ? null : org), user.getEmail(), org == null ? null : org.getName(),
+                org != null && org.isDemo(), org == null ? null : user.getRole().name(), org == null, mustChange);
     }
 }

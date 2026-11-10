@@ -4,6 +4,7 @@ import com.billing.domain.AppUser;
 import com.billing.security.CurrentUser;
 import com.billing.service.AuthService;
 import com.billing.web.Dtos.AuthResponse;
+import com.billing.web.Dtos.ChangePasswordRequest;
 import com.billing.web.Dtos.LoginRequest;
 import com.billing.web.Dtos.MeResponse;
 import com.billing.web.Dtos.RegisterRequest;
@@ -47,6 +48,12 @@ public class AuthController {
         return AuthResponse.from(auth.startDemo());
     }
 
+    /** The person chooses a new password (also how a temporary password set by an administrator is replaced). */
+    @PostMapping("/password")
+    public AuthResponse changePassword(@Valid @RequestBody ChangePasswordRequest request) {
+        return AuthResponse.from(auth.changePassword(currentUser.user().getId(), request.currentPassword(), request.newPassword()));
+    }
+
     @GetMapping("/me")
     public MeResponse me() {
         AppUser user = currentUser.user();
@@ -54,6 +61,7 @@ public class AuthController {
         String org = user.getOrgId() == null ? null : user.getOrgId().toString();
         boolean stale = !java.util.Objects.equals(currentUser.tokenOrg(), org)
                 || !java.util.Objects.equals(currentUser.tokenRole(), fresh.role());
-        return new MeResponse(fresh.email(), fresh.company(), fresh.demo(), fresh.role(), fresh.pending(), stale ? fresh.token() : null);
+        return new MeResponse(fresh.email(), fresh.company(), fresh.demo(), fresh.role(), fresh.pending(),
+                fresh.mustChangePassword(), stale ? fresh.token() : null);
     }
 }

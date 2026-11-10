@@ -118,6 +118,12 @@ browser --Authorization: Bearer <token>--> billing-service | report-service | no
   5 days before each due date, through the same outbox as any invoice. The day is kept (a charge for the 31st goes to
   the 28th in February and back to the 31st), a version column stops two runs from issuing a month twice, and a stopped
   charge issues nothing more.
+* **Password reset without e-mail.** A company administrator resets a member's password on the **Equipe** screen: the
+  system shows a temporary password once, the old password and any open session stop working at once, and at the next
+  login the person sees "o administrador mudou a sua senha" and nothing else opens until they choose a new one (the
+  token issued in the meantime carries no company, so all three services refuse it). An administrator cannot reset
+  themselves; for the owner of a company, `bash deploy/reset-password.sh email@company.com` does it from the server.
+  Anyone can also change their own password in **Equipe → Minha senha**.
 * **Default-risk score and cash forecast** (report service, Python). From the same Kafka events the service keeps each
   customer's payment history in Redis (how many invoices, how many paid more than 3 days late, total days late). A
   transparent rule gives each customer a 0-100 score (LOW / MEDIUM / HIGH): share paid late, average delay, and what is
@@ -152,7 +158,7 @@ browser --Authorization: Bearer <token>--> billing-service | report-service | no
 Billing API: `POST /auth/register`, `POST /auth/login`, `POST /auth/demo`, `GET /auth/me`, `POST /customers`,
 `GET /customers`, `GET /customers/{id}`, `POST /invoices`, `GET /invoices?status=OPEN`, `POST /invoices/{id}/pay`,
 `POST /invoices/{id}/cancel`, `POST /recurring`, `GET /recurring`, `POST /recurring/{id}/stop`, `GET /team`, `POST /team`,
-`PUT /team/{id}/role`, `DELETE /team/{id}`. Report API: `GET /reports/summary`, `GET /reports/monthly?year=`, `GET /reports/overdue`, `GET /reports/risk`,
+`PUT /team/{id}/role`, `POST /team/{id}/reset-password`, `DELETE /team/{id}`, `POST /auth/password`. Report API: `GET /reports/summary`, `GET /reports/monthly?year=`, `GET /reports/overdue`, `GET /reports/risk`,
 `GET /reports/forecast`.
 Notification API: `GET /notifications`. All of them except `/health` and the three `/auth` entry points need the
 login token. See [Accounts and data isolation](#accounts-and-data-isolation).
@@ -208,6 +214,6 @@ managed Kafka and databases are not free. The complete demo runs locally.
 
 ## Out of scope for the MVP
 
-Real payments (PIX/boleto), tax invoices, e-mail verification and password reset, and automatic WhatsApp sending
+Real payments (PIX/boleto), tax invoices, e-mail verification and password reset by e-mail (an administrator can reset it, see above), and automatic WhatsApp sending
 (the WhatsApp button opens a prepared chat; sending on its own needs the paid WhatsApp Business API). The Supabase
 version has no teams, monthly charges, risk score or forecast yet (the Java version has all of them).

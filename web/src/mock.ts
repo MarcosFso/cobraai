@@ -175,6 +175,13 @@ export const mockApi: Api = {
     member.role = role;
     return { ...member };
   },
+  resetPassword: async (id) => {
+    await delay();
+    if (!members.some((m) => m.id === id)) throw new Error('Pessoa não encontrada');
+    const member = members.find((m) => m.id === id);
+    if (member) member.password_reset_pending = true;
+    return 'Tmp7kQ2mPz4x';
+  },
   removeMember: async (id) => {
     await delay();
     members = members.filter((m) => m.id !== id);
@@ -318,6 +325,13 @@ export const mockAuth: Auth = {
     refreshes += 1;
     if (session?.pending && refreshes >= 2) session = { email: session.email, pending: false };
     return session;
+  },
+  changePassword: async (current, next) => {
+    await delay();
+    if (!current) return 'A senha atual está incorreta';
+    if (next === current) return 'A nova senha precisa ser diferente da atual';
+    if (session) setSession({ ...session, mustChangePassword: false });
+    return null;
   },
   signOut: async () => setSession(null),
 };

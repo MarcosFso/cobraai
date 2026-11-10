@@ -10,6 +10,7 @@ import { CustomerModal, InvoiceModal } from './components/Modals';
 import { NotificationsPage } from './components/NotificationsPage';
 import { TeamPage } from './components/TeamPage';
 import { WaitingScreen } from './components/WaitingScreen';
+import { ChangePasswordScreen } from './components/ChangePassword';
 import { Avatar } from './components/ui';
 import { DEMO_NOTE, isConfigured } from './supabase';
 import { useTheme } from './theme';
@@ -45,6 +46,7 @@ export function App() {
   }
   if (session === undefined) return <main className="center"><div className="spinner" aria-label="Carregando" /></main>;
   if (!session) return <LoginScreen />;
+  if (session.mustChangePassword) return <ChangePasswordScreen email={session.email} />;
   if (session.pending) return <WaitingScreen email={session.email} onSession={setSession} />;
   return <Workspace email={session.email} dark={theme === 'dark'} toggleTheme={toggleTheme} />;
 }

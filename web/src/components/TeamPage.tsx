@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ShieldCheck, Trash2, UserPlus } from 'lucide-react';
+import { Copy, KeyRound, ShieldCheck, Trash2, UserPlus } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
 import { api } from '../api';
 import type { Role } from '../types';
+import { PasswordForm } from './ChangePassword';
 import { Avatar, EmptyState, Skeleton, useToast } from './ui';
 
 const ROLE_LABEL: Record<Role, string> = { ADMIN: 'Administrador', MEMBER: 'Funcionário' };
@@ -14,6 +15,7 @@ export function TeamPage({ isAdmin, isDemo }: { isAdmin: boolean; isDemo: boolea
   const [email, setEmail] = useState('');
   const [role, setRole] = useState<Role>('MEMBER');
   const [problem, setProblem] = useState<string | null>(null);
+  const [issued, setIssued] = useState<{ email: string; password: string } | null>(null);
   const team = useQuery({ queryKey: ['team'], queryFn: api.team, enabled: !isDemo });
   const refresh = () => queryClient.invalidateQueries({ queryKey: ['team'] });
 
@@ -30,6 +32,14 @@ export function TeamPage({ isAdmin, isDemo }: { isAdmin: boolean; isDemo: boolea
   const change = useMutation({
     mutationFn: ({ id, next }: { id: string; next: Role }) => api.changeRole(id, next),
     onSuccess: () => void refresh(),
+    onError: (error: Error) => toast.error(error.message),
+  });
+  const resetPassword = useMutation({
+    mutationFn: ({ id }: { id: string; email: string }) => api.resetPassword(id),
+    onSuccess: (password, { email: who }) => {
+      setIssued({ email: who, password });
+      void refresh();
+    },
     onError: (error: Error) => toast.error(error.message),
   });
   const remove = useMutation({
@@ -92,6 +102,23 @@ export function TeamPage({ isAdmin, isDemo }: { isAdmin: boolean; isDemo: boolea
         </section>
       )}
 
+      {issued && (
+        <section className="panel temp-password" role="status">
+          <header><h3>Senha temporária de {issued.email}</h3></header>
+          <p className="temp-code">{issued.password}</p>
+          <p className="muted small">
+            Passe esta senha para a pessoa. <b>Ela aparece só agora</b>: se você fechar, será preciso redefinir de novo.
+            No próximo login ela será obrigada a escolher uma senha nova.
+          </p>
+          <div className="actions">
+            <button className="btn ghost small-btn" onClick={() => void navigator.clipboard?.writeText(issued.password).then(() => toast.success('Senha copiada'))}>
+              <Copy size={15} /> Copiar
+            </button>
+            <button className="btn primary small-btn" onClick={() => setIssued(null)}>Já anotei</button>
+          </div>
+        </section>
+      )}
+
       <section className="panel">
         <header><h3>Pessoas ({members.length})</h3></header>
         {team.isLoading && <Skeleton height={120} />}
@@ -102,7 +129,9 @@ export function TeamPage({ isAdmin, isDemo }: { isAdmin: boolean; isDemo: boolea
               <Avatar name={member.email} />
               <div className="grow">
                 <strong>{member.email}{member.you && <span className="you">você</span>}</strong>
-                <span className="muted small">{ROLE_LABEL[member.role]}</span>
+                <span className="muted small">
+                  {ROLE_LABEL[member.role]}{member.password_reset_pending && ' · aguardando troca de senha'}
+                </span>
               </div>
               {isAdmin && !member.you && (
                 <div className="actions">
@@ -112,6 +141,13 @@ export function TeamPage({ isAdmin, isDemo }: { isAdmin: boolean; isDemo: boolea
                     onClick={() => change.mutate({ id: member.id, next: member.role === 'ADMIN' ? 'MEMBER' : 'ADMIN' })}
                   >
                     {member.role === 'ADMIN' ? 'Tornar funcionário' : 'Tornar administrador'}
+                  </button>
+                  <button
+                    className="btn ghost small-btn"
+                    disabled={resetPassword.isPending}
+                    onClick={() => window.confirm(`Redefinir a senha de ${member.email}? A senha atual deixa de valer agora.`) && resetPassword.mutate({ id: member.id, email: member.email })}
+                  >
+                    <KeyRound size={15} /> Redefinir senha
                   </button>
                   <button
                     className="icon-btn danger"
@@ -127,6 +163,14 @@ export function TeamPage({ isAdmin, isDemo }: { isAdmin: boolean; isDemo: boolea
             </li>
           ))}
         </ul>
+      </section>
+
+      <section className="panel">
+        <header><h3>Minha senha</h3></header>
+        <details className="my-password">
+          <summary>Trocar a minha senha</summary>
+          <PasswordForm />
+        </details>
       </section>
     </>
   );

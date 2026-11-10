@@ -314,3 +314,13 @@ tr.inactive { opacity: 0.55; }
 .small-chart { height: 210px; }
 .panel > header h2 + .small { margin-left: 8px; }
 .rows.risk-rows li .grow span { white-space: normal; overflow: visible; text-overflow: clip; }
+
+/* ---------- password reset ---------- */
+.notice { background: var(--warn-soft); color: var(--warn); border-radius: 12px; padding: 12px 14px; margin: 12px 0 16px; line-height: 1.5; }
+.notice-icon { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; background: var(--warn-soft); color: var(--warn); margin-bottom: 8px; }
+.temp-password { border-color: var(--warn); margin-bottom: 18px; }
+.temp-code { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 1.5rem; letter-spacing: 0.08em; font-weight: 700; margin: 4px 0 10px; user-select: all; word-break: break-all; }
+.temp-password .actions { display: flex; gap: 10px; margin-top: 10px; }
+.my-password summary { cursor: pointer; font-weight: 600; padding: 4px 0; }
+.my-password form { max-width: 420px; margin-top: 12px; }
+.login-card .btn.wide + .btn.wide { margin-top: 10px; }

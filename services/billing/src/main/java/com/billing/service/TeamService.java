@@ -9,9 +9,11 @@ import com.billing.error.BusinessRuleException;
 import com.billing.error.NotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
 import java.util.List;
 import java.util.UUID;
 
@@ -27,10 +29,36 @@ public class TeamService {
 
     private final UserRepository users;
     private final OrganizationRepository organizations;
+    private final PasswordEncoder passwordEncoder;
+    private final SecureRandom random = new SecureRandom();
 
-    public TeamService(UserRepository users, OrganizationRepository organizations) {
+    public TeamService(UserRepository users, OrganizationRepository organizations, PasswordEncoder passwordEncoder) {
         this.users = users;
         this.organizations = organizations;
+        this.passwordEncoder = passwordEncoder;
+    }
+
+    /** Letters and digits without look-alikes (no 0/O, 1/l/I), so the administrator can read it out or type it. */
+    private static final String TEMP_ALPHABET = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+
+    /**
+     * An administrator sets a temporary password for someone of the same company. The person must replace it at the
+     * next login. Returns the temporary password; it is not stored anywhere in clear and is shown only this once.
+     */
+    @Transactional
+    public String resetPassword(UUID orgId, UUID actorId, UUID userId) {
+        if (actorId.equals(userId)) {
+            throw new BusinessRuleException("Você não pode redefinir a sua própria senha por aqui. Peça a outro administrador.");
+        }
+        AppUser user = users.findByIdAndOrgId(userId, orgId).orElseThrow(() -> new NotFoundException("Pessoa não encontrada"));
+        StringBuilder temp = new StringBuilder();
+        for (int i = 0; i < 12; i++) {
+            temp.append(TEMP_ALPHABET.charAt(random.nextInt(TEMP_ALPHABET.length())));
+        }
+        user.resetPassword(passwordEncoder.encode(temp));
+        users.saveAndFlush(user);
+        log.info("Password reset by administrator actorId={} userId={} orgId={}", actorId, userId, orgId);
+        return temp.toString();
     }
 
     @Transactional(readOnly = true)

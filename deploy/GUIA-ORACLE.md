@@ -92,6 +92,18 @@ git pull && $DC up -d --build   # atualizar para o código mais novo
 
 As empresas dos visitantes são apagadas sozinhas depois de 24 horas. As contas reais ficam guardadas.
 
+## Esqueci a minha senha
+
+Entre no servidor e rode (troque o e-mail):
+
+```bash
+cd ~/billing-platform
+bash deploy/reset-password.sh seu-email@empresa.com
+```
+
+Ele mostra uma senha temporária. Entre no site com ela e escolha uma nova quando o site pedir. Para um funcionário, o
+administrador da empresa faz isso na tela **Equipe → Redefinir senha**.
+
 ## Cuidados
 
 * **Não desligue nem apague a instância.** Se ficar muito parada (quase sem uso por vários dias), a Oracle pode

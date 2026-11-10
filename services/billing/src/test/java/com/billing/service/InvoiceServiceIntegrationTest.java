@@ -27,7 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /** Real PostgreSQL via Testcontainers (needs Docker). Kafka is not involved: the outbox publisher is off. */
 @SpringBootTest(properties = {"app.outbox.enabled=false", "app.topics.create=false"})
 @Testcontainers
-class InvoiceServiceIT {
+class InvoiceServiceIntegrationTest {
 
     @Container
     @ServiceConnection

@@ -3,7 +3,7 @@ import pytest
 from httpx import ASGITransport, AsyncClient
 
 from app.main import create_app, delinquency_rate
-from app.store import ReportStore
+from app.store import ReportStore, month_of
 
 
 @pytest.fixture
@@ -91,6 +91,12 @@ async def test_clear_wipes_everything_including_processed_ids(store):
     # after a rebuild the same event must count again
     assert await store.apply(created) == "applied"
     assert (await store.totals())["issuedCents"] == 10000
+
+
+def test_month_is_counted_in_sao_paulo_time():
+    # 01:00 UTC on Dec 1st is still 22:00 of Nov 30th in Sao Paulo
+    assert month_of({"occurredAt": "2026-12-01T01:00:00Z"}) == "2026-11"
+    assert month_of({"occurredAt": "2026-11-05T14:32:00Z"}) == "2026-11"
 
 
 def test_delinquency_rate():

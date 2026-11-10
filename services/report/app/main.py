@@ -1,6 +1,6 @@
 import asyncio
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import datetime
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -9,7 +9,7 @@ from redis.asyncio import Redis
 from . import config
 from .consumer import run_consumer
 from .logging_setup import setup_logging
-from .store import ReportStore
+from .store import SAO_PAULO, ReportStore, current_month
 
 
 def delinquency_rate(totals: dict) -> float:
@@ -44,7 +44,7 @@ def create_app(store: ReportStore | None = None, start_consumer: bool = True) ->
 
     @app.get("/reports/summary")
     async def summary():
-        month = datetime.now(timezone.utc).strftime("%Y-%m")
+        month = current_month()
         totals = await store.totals()
         current = await store.month(month)
         return {
@@ -59,7 +59,7 @@ def create_app(store: ReportStore | None = None, start_consumer: bool = True) ->
 
     @app.get("/reports/monthly")
     async def monthly(year: int | None = None):
-        year = year or datetime.now(timezone.utc).year
+        year = year or datetime.now(SAO_PAULO).year
         months = []
         for number in range(1, 13):
             key = f"{year}-{number:02d}"

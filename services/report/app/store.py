@@ -11,7 +11,8 @@ The event does not carry the previous status, so the status of each invoice is s
 "OVERDUE -> PAID" move the amount from the overdue total to the received total.
 """
 import logging
-from datetime import datetime, timezone
+from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from redis.asyncio import Redis
 
@@ -31,11 +32,20 @@ def k_month(month: str) -> str:
     return f"{PREFIX}month:{month}"
 
 
+SAO_PAULO = ZoneInfo("America/Sao_Paulo")
+
+
+def current_month() -> str:
+    return datetime.now(SAO_PAULO).strftime("%Y-%m")
+
+
 def month_of(event: dict) -> str:
+    """Month (YYYY-MM) of the event in Sao Paulo time, the same calendar the billing service uses for due dates."""
     occurred = event.get("occurredAt") or ""
-    if len(occurred) >= 7 and occurred[4] == "-":
-        return occurred[:7]
-    return datetime.now(timezone.utc).strftime("%Y-%m")
+    try:
+        return datetime.fromisoformat(occurred).astimezone(SAO_PAULO).strftime("%Y-%m")
+    except ValueError:
+        return current_month()
 
 
 class ReportStore:

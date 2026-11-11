@@ -76,8 +76,16 @@ da sua empresa. O passo a passo de uso, com imagens, está em [../docs/GUIA-DE-U
 
 Para mostrar a arquitetura numa entrevista, abra (pedirá usuário `visitante` e a senha do dono):
 
-* `https://marcos-cobrancas.duckdns.org/kafka`: as mensagens passando pelo Kafka.
 * `https://marcos-cobrancas.duckdns.org/mail`: os e-mails que o serviço Node.js enviou.
+* `https://marcos-cobrancas.duckdns.org/kafka`: as mensagens passando pelo Kafka. **Fica desligado** para economizar
+  memória (a pilha foi feita para caber em 2 GB). Ligue antes de mostrar e desligue depois:
+
+```bash
+cd ~/billing-platform
+DC="sudo docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml"
+$DC --profile tools up -d kafka-ui     # ligar (leva cerca de 30 segundos)
+$DC stop kafka-ui                      # desligar
+```
 
 ## No dia a dia
 

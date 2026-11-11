@@ -2,7 +2,7 @@
 
 Runs the whole stack (Java billing service, Node.js notifications, Python reports, React dashboard, PostgreSQL,
 Redis, Kafka, Kafka UI, Mailpit) on a single small Linux server, behind HTTPS and a shared login. Built for the
-**Oracle Cloud Always Free** Ampere A1 VM (free, no time limit), but it works on any Ubuntu box with 4+ GB of RAM.
+**Oracle Cloud Always Free** Ampere A1 VM (free, no time limit), but it works on any Ubuntu box with **2 GB of RAM or more** (see "Memory" below).
 
 ```
 internet ──443──> Caddy (HTTPS + password) ─┬─> dashboard (nginx)
@@ -52,6 +52,26 @@ $DC ps                         # what is running
 $DC logs -f billing-service    # follow one service
 git pull && $DC up -d --build  # update to the latest code
 ```
+
+## Memory (made to fit in 2 GB)
+
+Measured with the real stack under load (about 85 simultaneous users, three rounds): Kafka ~460 MB, billing (Java)
+~410 MB, PostgreSQL ~90 MB, notification ~80 MB, report ~60 MB, Mailpit ~50 MB, the rest under 20 MB each: about
+**1.2 GB** in total, with no container killed or restarted. A 2 GB server also needs ~300-400 MB for the system and
+Docker, so it fits with little room to spare; 4 GB is comfortable.
+
+* Every container has a memory ceiling (`mem_limit`), so a runaway service is restarted by Docker instead of taking
+  the server down, and the JVMs run with small heaps.
+* **Kafka UI is off by default** (~300 MB). Turn it on to show the architecture and off afterwards:
+
+  ```bash
+  DC="sudo docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml"
+  $DC --profile tools up -d kafka-ui     # then open https://your-address/kafka
+  $DC stop kafka-ui
+  ```
+
+  While it is off, `/kafka` answers with a short message (and still asks for the owner password first).
+* `bootstrap.sh` creates a 2 GB swap file on machines with less than 3.5 GB of RAM, as a safety net.
 
 ## Notes
 

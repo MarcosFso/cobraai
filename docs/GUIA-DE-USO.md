@@ -212,5 +212,5 @@ O script imprime uma senha temporária e a conta passa pela mesma tela de troca 
 3. Clique no balão verde: o WhatsApp abre com a mensagem pronta.
 4. Marque como paga e veja os totais mudarem sozinhos: foi o Java gravando o evento, o Kafka entregando e o Python
    recalculando.
-5. Abra o Kafka UI (`/kafka`) para mostrar a mensagem do evento e o Mailpit (`/mail`) para mostrar o e-mail que o
+5. Ligue o Kafka UI (vem desligado para economizar memória, veja `deploy/GUIA-ORACLE.md`) e abra `/kafka` para mostrar a mensagem do evento e o Mailpit (`/mail`) para mostrar o e-mail que o
    serviço Node.js enviou.

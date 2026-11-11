@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 # One-shot setup for a fresh Ubuntu server (made for Oracle Cloud "Always Free" Ampere A1, but works on any
-# Ubuntu box with 4+ GB of RAM). Run it from inside the cloned repository:
+# Ubuntu box with 2+ GB of RAM: it adds a 2 GB swap file when the machine is small). Run it from inside the cloned
+# repository:
 #
 #   bash deploy/oracle/bootstrap.sh your-name.duckdns.org [password]
 #
@@ -16,6 +17,24 @@ DC="sudo docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml
 echo "==> Docker"
 if ! command -v docker > /dev/null; then
   curl -fsSL https://get.docker.com | sudo sh
+fi
+
+echo "==> Memory"
+TOTAL_MB="$(awk '/MemTotal/ {print int($2/1024)}' /proc/meminfo)"
+echo "RAM: ${TOTAL_MB} MB"
+if [ "$TOTAL_MB" -lt 3500 ] && [ "$(swapon --show --noheadings | wc -l)" -eq 0 ]; then
+  # A safety net for a small machine: when memory runs short the kernel swaps instead of killing a service.
+  echo "Small machine: creating a 2 GB swap file"
+  sudo fallocate -l 2G /swapfile
+  sudo chmod 600 /swapfile
+  sudo mkswap /swapfile > /dev/null
+  sudo swapon /swapfile
+  grep -q '^/swapfile' /etc/fstab || echo '/swapfile none swap sw 0 0' | sudo tee -a /etc/fstab > /dev/null
+  echo 'vm.swappiness=20' | sudo tee /etc/sysctl.d/99-swappiness.conf > /dev/null
+  sudo sysctl -q -p /etc/sysctl.d/99-swappiness.conf
+fi
+if [ "$TOTAL_MB" -lt 1700 ]; then
+  echo "WARNING: less than 2 GB of RAM. The stack needs about 1.1 GB plus the system; it may not fit." >&2
 fi
 
 echo "==> Firewall (Oracle's Ubuntu images block everything but SSH by default)"
@@ -54,7 +73,7 @@ echo
 echo "=============================================================="
 echo " Ready:     https://$DOMAIN"
 echo ' Anyone can create a company account on the site, or use the visitor button.'
-echo " Owner tools (kafka and mail):  https://$DOMAIN/kafka   https://$DOMAIN/mail"
+echo " Owner tools: https://$DOMAIN/mail  (and https://$DOMAIN/kafka once you turn Kafka UI on, see deploy/README.md)"
 echo "   user: visitante   password: $(cat deploy/.visitor-password)   (keep it private)"
 echo " (the HTTPS certificate can take a minute on the first visit)"
 echo "=============================================================="

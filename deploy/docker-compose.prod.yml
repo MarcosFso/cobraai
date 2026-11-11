@@ -4,7 +4,11 @@
 #   * Only Caddy is reachable from the internet (ports 80/443). It gives HTTPS and asks for a password.
 #   * Databases, Kafka and the services stay on the private Docker network.
 #   * The dashboard and the APIs share one address (same origin), so no CORS and one certificate.
-#   * Memory limits for the JVMs, so everything fits in a few GB.
+#   * Sized for a 2 GB server: every container has a memory ceiling (mem_limit), so one service that misbehaves is
+#     restarted by Docker instead of taking the whole machine down, and the JVMs run with small heaps.
+#   * Kafka UI is OFF by default (it alone uses ~300 MB). Turn it on only when you want to show it:
+#       docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml --profile tools up -d kafka-ui
+#     and turn it off again with `stop kafka-ui`.
 #
 # Run from the repository root:
 #   docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml up -d --build
@@ -14,6 +18,7 @@ services:
   caddy:
     image: caddy:2
     restart: unless-stopped
+    mem_limit: 64m
     ports:
       - "${HTTP_PORT:-80}:80"
       - "${HTTPS_PORT:-443}:443"
@@ -30,6 +35,8 @@ services:
   postgres:
     image: postgres:16
     restart: unless-stopped
+    mem_limit: 256m
+    command: ["postgres", "-c", "shared_buffers=64MB", "-c", "max_connections=40", "-c", "work_mem=4MB"]
     environment:
       POSTGRES_DB: billing
       POSTGRES_USER: billing
@@ -44,6 +51,7 @@ services:
   redis:
     image: redis:7
     restart: unless-stopped
+    mem_limit: 160m
     command: ["redis-server", "--appendonly", "yes", "--maxmemory", "128mb"]
     volumes: [redis-data:/data]
     healthcheck:
@@ -55,6 +63,7 @@ services:
   kafka:
     image: apache/kafka:3.8.0
     restart: unless-stopped
+    mem_limit: 512m
     environment:
       KAFKA_NODE_ID: 1
       KAFKA_PROCESS_ROLES: broker,controller
@@ -70,7 +79,7 @@ services:
       KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
       KAFKA_LOG_RETENTION_MS: -1
       KAFKA_NUM_PARTITIONS: 3
-      KAFKA_HEAP_OPTS: -Xms384m -Xmx640m
+      KAFKA_HEAP_OPTS: -Xms192m -Xmx320m
     volumes: [kafka-data:/var/lib/kafka/data]
     healthcheck:
       test: ["CMD-SHELL", "/opt/kafka/bin/kafka-broker-api-versions.sh --bootstrap-server localhost:19092 > /dev/null 2>&1"]
@@ -81,6 +90,8 @@ services:
   kafka-ui:
     image: provectuslabs/kafka-ui:v0.7.2
     restart: unless-stopped
+    profiles: ["tools"] # off by default: ~300 MB. See the note at the top of this file.
+    mem_limit: 400m
     environment:
       KAFKA_CLUSTERS_0_NAME: local
       KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: kafka:19092
@@ -93,12 +104,14 @@ services:
   mailpit:
     image: axllent/mailpit:v1.33.1
     restart: unless-stopped
+    mem_limit: 64m
     environment:
       MP_WEBROOT: /mail
 
   billing-service:
     build: ../services/billing
     restart: unless-stopped
+    mem_limit: 512m
     ports: ["127.0.0.1:18080:8080"] # loopback only: used by the seed script on the server itself, not public
     environment:
       DB_URL: jdbc:postgresql://postgres:5432/billing
@@ -106,7 +119,7 @@ services:
       DB_PASSWORD: ${POSTGRES_PASSWORD:-billing}
       KAFKA_BOOTSTRAP: kafka:19092
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in deploy/.env}
-      JAVA_TOOL_OPTIONS: -Xmx448m
+      JAVA_TOOL_OPTIONS: -Xmx300m -XX:MaxMetaspaceSize=128m -Xss512k -XX:+UseSerialGC
       # The nightly job also runs every 10 minutes here, so the demo shows invoices becoming overdue soon after the seed.
       # It is idempotent: only OPEN invoices past the due date are touched.
       APP_OVERDUE_CRON: "0 */10 * * * *"
@@ -117,7 +130,9 @@ services:
   notification-service:
     build: ../services/notification
     restart: unless-stopped
+    mem_limit: 160m
     environment:
+      NODE_OPTIONS: --max-old-space-size=96
       KAFKA_BOOTSTRAP: kafka:19092
       SMTP_HOST: mailpit
       SMTP_PORT: 1025
@@ -131,6 +146,7 @@ services:
   report-service:
     build: ../services/report
     restart: unless-stopped
+    mem_limit: 192m
     ports: ["127.0.0.1:18000:8000"] # loopback only, for checks on the server
     environment:
       KAFKA_BOOTSTRAP: kafka:19092
@@ -149,6 +165,7 @@ services:
         VITE_REPORT_URL: /api/report
         VITE_NOTIFICATION_URL: /api/notification
     restart: unless-stopped
+    mem_limit: 48m
 
 volumes:
   postgres-data:

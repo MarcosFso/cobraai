@@ -38,4 +38,11 @@
 	handle {
 		reverse_proxy dashboard:80
 	}
+
+	# Kafka UI is switched off by default to save memory (see docker-compose.prod.yml). Say so instead of a bare 502.
+	handle_errors {
+		# only when the proxy itself fails (Kafka UI is off); a wrong password must still get the 401 login prompt
+		@kafkaDown expression `path('/kafka*') && {http.error.status_code} >= 502`
+		respond @kafkaDown "Kafka UI is off to save memory. The owner can turn it on with: docker compose --profile tools up -d kafka-ui" 503
+	}
 }

@@ -31,7 +31,7 @@ public class AppConfig implements WebMvcConfigurer {
 
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/**").allowedOrigins(allowedOrigins).allowedMethods("GET", "POST", "OPTIONS");
+        registry.addMapping("/**").allowedOrigins(allowedOrigins).allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS");
     }
 
     /** Topics keep messages forever (retention.ms=-1) so the report service can rebuild from "earliest". */

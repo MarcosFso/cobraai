@@ -27,12 +27,12 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
     public ProblemDetail optimisticLock(ObjectOptimisticLockingFailureException e) {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "The invoice was changed by another request, try again");
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "A cobrança foi alterada por outra requisição. Tente de novo.");
     }
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ProblemDetail integrity(DataIntegrityViolationException e) {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "The request conflicts with existing data");
+        return ProblemDetail.forStatusAndDetail(HttpStatus.CONFLICT, "A requisição conflita com dados que já existem.");
     }
 
     @ExceptionHandler(UnauthorizedException.class)
@@ -65,6 +65,6 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler({HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class})
     public ProblemDetail unreadable(Exception e) {
-        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Malformed request");
+        return ProblemDetail.forStatusAndDetail(HttpStatus.BAD_REQUEST, "Requisição malformada.");
     }
 }

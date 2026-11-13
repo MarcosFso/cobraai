@@ -8,6 +8,15 @@ import java.util.UUID;
 public class InvalidTransitionException extends RuntimeException {
 
     public InvalidTransitionException(UUID invoiceId, InvoiceStatus current, String action) {
-        super("Cannot " + action + " invoice " + invoiceId + " while it is " + current);
+        super("Não dá para " + ("pay".equals(action) ? "pagar" : "cancelar") + " a cobrança " + invoiceId + ": ela está " + label(current) + ".");
+    }
+
+    private static String label(InvoiceStatus status) {
+        return switch (status) {
+            case OPEN -> "em aberto";
+            case PAID -> "paga";
+            case OVERDUE -> "vencida";
+            case CANCELED -> "cancelada";
+        };
     }
 }

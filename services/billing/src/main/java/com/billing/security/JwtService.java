@@ -29,7 +29,7 @@ public class JwtService {
     public String issue(AppUser user, @Nullable Organization org) {
         Instant now = Instant.now();
         JwtClaimsSet.Builder builder = JwtClaimsSet.builder()
-                .issuer("billing-platform")
+                .issuer("cobraai")
                 .subject(user.getId().toString())
                 .issuedAt(now)
                 .expiresAt(now.plus(ttl))

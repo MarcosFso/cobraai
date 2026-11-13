@@ -32,7 +32,7 @@ export function buildApp(store: NotificationStore, options: ServerOptions): Fast
     if (!claims) return reply.code(401).send({ detail: 'Faça login para continuar' });
 
     const { customerId } = request.query as { customerId?: string };
-    const rows = store.listByOrg(claims.org, 100).filter((row) => !customerId || row.customerId === customerId);
+    const rows = store.listByOrg(claims.org, 100, customerId || undefined);
     return rows.map((row) => ({
       id: row.eventId,
       type: row.type,

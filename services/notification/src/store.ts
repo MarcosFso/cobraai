@@ -21,7 +21,7 @@ export interface NotificationStore {
   /** Gives the eventId back, used when the e-mail could not be sent so the retry is not ignored. */
   release(eventId: string): void;
   /** History of ONE company, newest first. There is no way to read across companies. */
-  listByOrg(orgId: string, limit?: number): NotificationRecord[];
+  listByOrg(orgId: string, limit?: number, customerId?: string): NotificationRecord[];
   /** Deletes the history of demo sandboxes older than the given moment. Returns how many rows went away. */
   purgeDemoBefore(isoDate: string): number;
 }
@@ -73,10 +73,15 @@ export class SqliteStore implements NotificationStore {
     this.db.prepare('DELETE FROM notifications WHERE event_id = ?').run(eventId);
   }
 
-  listByOrg(orgId: string, limit = 100): NotificationRecord[] {
-    const rows = this.db
-      .prepare('SELECT * FROM notifications WHERE org_id = ? ORDER BY sent_at DESC LIMIT ?')
-      .all(orgId, limit) as Record<string, string | number>[];
+  listByOrg(orgId: string, limit = 100, customerId?: string): NotificationRecord[] {
+    // The customer filter is part of the query, so it applies before the limit (a customer's older e-mails still show up).
+    const rows = (
+      customerId
+        ? this.db
+            .prepare('SELECT * FROM notifications WHERE org_id = ? AND customer_id = ? ORDER BY sent_at DESC LIMIT ?')
+            .all(orgId, customerId, limit)
+        : this.db.prepare('SELECT * FROM notifications WHERE org_id = ? ORDER BY sent_at DESC LIMIT ?').all(orgId, limit)
+    ) as Record<string, string | number>[];
     return rows.map((row) => ({
       eventId: String(row.event_id),
       orgId: String(row.org_id),

@@ -13,7 +13,9 @@ log = logging.getLogger("report.consumer")
 async def handle_message(store: ReportStore, raw: bytes) -> None:
     try:
         event = json.loads(raw)
-        event["eventId"], event["type"], event["invoiceId"], event["amountCents"]
+        event["eventId"], event["type"], event["invoiceId"]
+        if not isinstance(event["amountCents"], int) or isinstance(event["amountCents"], bool):
+            raise ValueError("amountCents must be an integer")  # a poison message must not block the topic forever
     except (ValueError, KeyError, TypeError):
         log.warning("Discarding invalid event payload")
         return
@@ -28,12 +30,16 @@ async def run_consumer(store: ReportStore) -> None:
             bootstrap_servers=config.KAFKA_BOOTSTRAP,
             group_id=config.KAFKA_GROUP_ID,
             auto_offset_reset="earliest",
+            # The offset is committed only after the event was applied: if Redis is down the message is read again
+            # (at-least-once), and applying it twice is safe because every event is idempotent.
+            enable_auto_commit=False,
         )
         try:
             await consumer.start()
             log.info("Kafka consumer running", extra={"topics": config.TOPICS})
             async for message in consumer:
                 await handle_message(store, message.value)
+                await consumer.commit()
         except asyncio.CancelledError:
             await consumer.stop()
             raise

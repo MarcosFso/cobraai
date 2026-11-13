@@ -41,8 +41,9 @@ A senha das ferramentas do dono (`/mail` e `/kafka`) está em `~/billing-platfor
 - **Sozinha, por inatividade:** `deploy/azure/idle-shutdown.sh` roda a cada 10 minutos (cron) e desaloca a máquina se
   ninguém usar o site por 3 horas (conta pedidos a `/api`, `/mail` e `/kafka`; o `/health` e a página inicial não contam,
   porque robôs da internet os visitam o dia todo). Ele nunca desliga nas primeiras 3 horas depois de ligar.
-  Para isso a máquina precisa da identidade gerenciada ligada e do papel **Colaborador da Máquina Virtual** no grupo de
-  recursos `billing_group` (portal: máquina → Identidade → Atribuições de função do Azure → Adicionar).
+  Para isso a máquina precisa da identidade gerenciada ligada e do papel **Colaborador da Máquina Virtual** na própria
+  máquina (portal: máquina → Controle de acesso (IAM) → Adicionar atribuição de função → Colaborador da Máquina Virtual →
+  Identidade gerenciada → Máquina virtual → `billing`). É o menor escopo possível: a máquina só pode mexer nela mesma.
   Sem o papel, o script só escreve no log (`/var/log/idle-shutdown.log`) e não faz nada.
   - Mudar o tempo: `IDLE_HOURS=6 bash deploy/azure/enable-idle-shutdown.sh`.
   - Desligar o recurso: `sudo rm /etc/cron.d/idle-shutdown`.

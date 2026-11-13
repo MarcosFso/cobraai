@@ -49,6 +49,12 @@ A senha das ferramentas do dono (`/mail` e `/kafka`) está em `~/billing-platfor
   - Desligar o recurso: `sudo rm /etc/cron.d/idle-shutdown`.
   - Ver o que ele faria agora, sem parar nada: `DRY_RUN=1 bash deploy/azure/idle-shutdown.sh`.
 
+## Acordar pela página de entrada
+`wake/` (publicada no Vercel como `cobraai-wake`) liga a máquina quando alguém clica em "Abrir o CobraAí" e abre o site quando
+ele responde. Ela usa um registro de aplicativo do Azure (`cobraai-wake`) com o papel **Colaborador da Máquina Virtual** só na
+máquina `billing`, e sete variáveis de ambiente no Vercel (nenhuma no código). Medido: da máquina desalocada ao site
+respondendo, cerca de 1 minuto. `GET /api/status` só lê; só `POST /api/wake` liga.
+
 ## Atualizar o código
 O repositório é privado, então o código foi enviado do computador para a máquina:
 ```powershell

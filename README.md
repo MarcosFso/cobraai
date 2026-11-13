@@ -13,7 +13,10 @@ as mensais, acompanha quem pagou, mostra quem tende a atrasar e abre o WhatsApp 
 
 ## Demonstração ao vivo
 
-### https://cobraai.chilecentral.cloudapp.azure.com
+### https://cobraai-wake.vercel.app
+
+Esse endereço fica sempre no ar. Se o sistema estiver em repouso, a página o **acorda sozinha em cerca de 1 minuto** e abre a
+demonstração. (Endereço direto: https://cobraai.chilecentral.cloudapp.azure.com, que só responde com o sistema ligado.)
 
 Clique em **Entrar como visitante**: você ganha uma empresa de exemplo só sua, com clientes, cobranças, gráficos,
 previsão de caixa e risco por cliente. Também dá para criar a conta de uma empresa de verdade (e-mail e senha).
@@ -22,8 +25,9 @@ previsão de caixa e risco por cliente. Também dá para criar a conta de uma em
 > e-mail de pessoas reais), nem use uma senha que você usa em outro lugar. As empresas de visitante são apagadas
 > sozinhas depois de 24 horas, e nenhum e-mail ou mensagem real é enviado.
 >
-> O servidor roda em créditos gratuitos de estudante e pode ser desligado quando ninguém está usando. Se o link não
-> abrir, os prints abaixo e o [guia de uso](docs/GUIA-DE-USO.md) mostram o sistema funcionando.
+> O servidor roda em créditos gratuitos de estudante e **desliga sozinho depois de 3 horas sem uso**; o primeiro acesso
+> depois disso espera cerca de 1 minuto. Se algo não abrir, os prints abaixo e o [guia de uso](docs/GUIA-DE-USO.md)
+> mostram o sistema funcionando.
 
 ![Painel do CobraAí](docs/screenshots/02-painel.jpg)
 
@@ -142,7 +146,8 @@ recursos: cada contêiner tem um limite de memória, as JVMs usam heaps pequenos
 preciso. Medido com carga (cerca de 85 usuários ao mesmo tempo): **1,2 GB** no pico, sem nenhum serviço morto. Há um
 script que desliga a máquina sozinha quando ninguém usa o site, para o crédito render mais.
 
-Guias: [Azure](deploy/azure/GUIA-AZURE.md), [Oracle Cloud](deploy/GUIA-ORACLE.md), [visão geral do deploy](deploy/README.md).
+A página que acorda o servidor está em [`wake/`](wake/) (Vercel, funções que usam uma credencial de uma só permissão: ligar
+essa máquina). Guias: [Azure](deploy/azure/GUIA-AZURE.md), [Oracle Cloud](deploy/GUIA-ORACLE.md), [visão geral do deploy](deploy/README.md).
 
 ## Limitações e próximos passos
 

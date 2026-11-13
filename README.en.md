@@ -1,7 +1,7 @@
 # CobraAí (English)
 
 > The main README is in Portuguese: [README.md](README.md). This is the original English technical write-up.
-> **Live demo:** https://cobraai.chilecentral.cloudapp.azure.com (press the visitor button). It is a portfolio demo: do not enter real customer data.
+> **Live demo:** https://cobraai-wake.vercel.app (always up; it wakes the server in about a minute if it is asleep, then press the visitor button). It is a portfolio demo: do not enter real customer data.
 
 Microservices with Java, Node.js, Python and Kafka. Small businesses issue invoices, track payments and notify
 customers. Built to practice event-driven architecture, not because a system this small needs four services

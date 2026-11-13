@@ -5,8 +5,9 @@
 #
 #   bash deploy/oracle/bootstrap.sh your-name.duckdns.org [password]
 #
-# It installs Docker, opens ports 80/443, writes deploy/.env, builds and starts the stack, loads the demo data
-# and schedules the nightly reset. Running it again is safe (the .env and the database are kept).
+# It installs Docker, opens ports 80/443, writes deploy/.env (with random passwords and JWT secret), then builds and
+# starts the stack. Visitors get their own sample data from the "Entrar como visitante" button, and the billing
+# service deletes those sandboxes after 24 hours by itself. Running it again is safe (the .env and the database are kept).
 set -euo pipefail
 
 DOMAIN="${1:?usage: bash deploy/oracle/bootstrap.sh your-domain.duckdns.org [password]}"

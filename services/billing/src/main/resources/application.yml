@@ -1,5 +1,8 @@
 server:
   port: 8080
+  # Behind a reverse proxy (Caddy) the request arrives as plain http. Trusting X-Forwarded-Proto/Host makes the browser's
+  # same-origin requests (which carry an Origin header) count as same-origin, instead of failing with "Invalid CORS request".
+  forward-headers-strategy: framework
 
 spring:
   application:

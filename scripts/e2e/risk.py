@@ -1,8 +1,9 @@
 import json, sys, time, urllib.request, urllib.error
 import os
-B = os.environ.get("BASE_URL", "http://localhost:8088") + "/api"
+ORIGIN = os.environ.get("BASE_URL", "http://localhost:8088")
+B = ORIGIN + "/api"
 def call(m, p, t=None, b=None):
-    h = {"Content-Type": "application/json"}
+    h = {"Content-Type": "application/json", "Origin": ORIGIN}
     if t: h["Authorization"] = "Bearer " + t
     r = urllib.request.Request(B + p, data=json.dumps(b).encode() if b is not None else (b"" if m == "POST" else None), method=m, headers=h)
     try:

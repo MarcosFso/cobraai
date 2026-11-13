@@ -119,6 +119,7 @@ services:
       DB_PASSWORD: ${POSTGRES_PASSWORD:-billing}
       KAFKA_BOOTSTRAP: kafka:19092
       JWT_SECRET: ${JWT_SECRET:?set JWT_SECRET in deploy/.env}
+      SERVER_FORWARD_HEADERS_STRATEGY: framework # trust Caddy's X-Forwarded-* headers (see application.yml)
       JAVA_TOOL_OPTIONS: -Xmx300m -XX:MaxMetaspaceSize=128m -Xss512k -XX:+UseSerialGC
       # The nightly job also runs every 10 minutes here, so the demo shows invoices becoming overdue soon after the seed.
       # It is idempotent: only OPEN invoices past the due date are touched.

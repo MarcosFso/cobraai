@@ -2,11 +2,13 @@ import base64, json, sys, time, urllib.error, urllib.request, uuid
 
 import os
 BASE = os.environ.get("BASE_URL", "http://localhost:8088")
+ORIGIN = BASE
 OK, BAD = [], []
 
 
 def call(method, path, token=None, body=None):
     headers = {"Content-Type": "application/json"} if body is not None else {}
+    headers["Origin"] = ORIGIN  # like a browser: same-origin POSTs carry it
     if token:
         headers["Authorization"] = f"Bearer {token}"
     data = json.dumps(body).encode() if body is not None else (b"" if method in ("POST", "PUT") else None)

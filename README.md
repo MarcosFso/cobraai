@@ -1,4 +1,6 @@
-# CobraAí
+<p align="center"><img src="web/public/favicon.svg" alt="Logo do CobraAí" width="96" height="96"></p>
+
+<h1 align="center">CobraAí</h1>
 
 **Cobranças sem planilha, pagamentos sem susto.** Sistema de cobranças para pequenas empresas: emite cobranças, repete
 as mensais, acompanha quem pagou, mostra quem tende a atrasar e abre o WhatsApp do cliente com a mensagem pronta.

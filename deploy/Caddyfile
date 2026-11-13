@@ -3,6 +3,12 @@
 {$SITE_ADDRESS} {
 	encode gzip
 
+	# One JSON line per request on stdout. deploy/azure/idle-shutdown.sh reads it to tell whether anyone is using the site.
+	log {
+		output stdout
+		format json
+	}
+
 	header {
 		X-Content-Type-Options nosniff
 		X-Frame-Options SAMEORIGIN

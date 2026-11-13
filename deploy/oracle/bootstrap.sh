@@ -37,11 +37,11 @@ if [ "$TOTAL_MB" -lt 1700 ]; then
   echo "WARNING: less than 2 GB of RAM. The stack needs about 1.1 GB plus the system; it may not fit." >&2
 fi
 
-echo "==> Firewall (Oracle's Ubuntu images block everything but SSH by default)"
+echo "==> Firewall (Oracle's Ubuntu images block everything but SSH by default; on Azure the network security group does it, and this step changes nothing harmful)"
 if command -v iptables > /dev/null; then
   for port in 80 443; do
     sudo iptables -C INPUT -p tcp --dport "$port" -j ACCEPT 2> /dev/null \
-      || sudo iptables -I INPUT 5 -p tcp --dport "$port" -j ACCEPT
+      || sudo iptables -I INPUT 1 -p tcp --dport "$port" -j ACCEPT || true
   done
   sudo DEBIAN_FRONTEND=noninteractive apt-get install -y -qq iptables-persistent > /dev/null 2>&1 || true
   sudo netfilter-persistent save > /dev/null 2>&1 || true

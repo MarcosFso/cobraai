@@ -2,14 +2,60 @@
 
 <h1 align="center">CobraAí</h1>
 
-**Cobranças sem planilha, pagamentos sem susto.** Sistema de cobranças para pequenas empresas: emite cobranças, repete
-as mensais, acompanha quem pagou, mostra quem tende a atrasar e abre o WhatsApp do cliente com a mensagem pronta.
+<p align="center"><b>Cobranças sem planilha, pagamentos sem susto.</b><br>
+Sistema de cobranças para pequenas empresas, feito como uma arquitetura de <b>microsserviços orientada a eventos</b><br>
+(Java + Kafka + Python + Node + React), no ar na nuvem com HTTPS.</p>
 
-[![billing-service](https://github.com/MarcosFso/cobraai/actions/workflows/billing.yml/badge.svg)](https://github.com/MarcosFso/cobraai/actions/workflows/billing.yml)
-[![report-service](https://github.com/MarcosFso/cobraai/actions/workflows/report.yml/badge.svg)](https://github.com/MarcosFso/cobraai/actions/workflows/report.yml)
-[![notification-service](https://github.com/MarcosFso/cobraai/actions/workflows/notification.yml/badge.svg)](https://github.com/MarcosFso/cobraai/actions/workflows/notification.yml)
-[![web](https://github.com/MarcosFso/cobraai/actions/workflows/web.yml/badge.svg)](https://github.com/MarcosFso/cobraai/actions/workflows/web.yml)
-![Licença MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-blue)
+<p align="center">
+  <a href="https://cobraai-wake.vercel.app"><img alt="Ver demonstração ao vivo" src="https://img.shields.io/badge/%F0%9F%9A%80_Ver_demonstra%C3%A7%C3%A3o_ao_vivo-clique_aqui-2ea44f?style=for-the-badge"></a>
+</p>
+
+<p align="center">
+  <img alt="Java 21" src="https://img.shields.io/badge/Java-21-ED8B00?logo=openjdk&logoColor=white">
+  <img alt="Spring Boot" src="https://img.shields.io/badge/Spring_Boot-3.4-6DB33F?logo=springboot&logoColor=white">
+  <img alt="Apache Kafka" src="https://img.shields.io/badge/Apache_Kafka-231F20?logo=apachekafka&logoColor=white">
+  <img alt="Python" src="https://img.shields.io/badge/Python-3.12-3776AB?logo=python&logoColor=white">
+  <img alt="FastAPI" src="https://img.shields.io/badge/FastAPI-009688?logo=fastapi&logoColor=white">
+  <img alt="Node.js" src="https://img.shields.io/badge/Node-22-339933?logo=nodedotjs&logoColor=white">
+  <img alt="TypeScript" src="https://img.shields.io/badge/TypeScript-3178C6?logo=typescript&logoColor=white">
+  <img alt="React" src="https://img.shields.io/badge/React-18-61DAFB?logo=react&logoColor=black">
+  <img alt="PostgreSQL" src="https://img.shields.io/badge/PostgreSQL-4169E1?logo=postgresql&logoColor=white">
+  <img alt="Redis" src="https://img.shields.io/badge/Redis-DC382D?logo=redis&logoColor=white">
+  <img alt="Docker" src="https://img.shields.io/badge/Docker-2496ED?logo=docker&logoColor=white">
+  <img alt="Kubernetes" src="https://img.shields.io/badge/Kubernetes-326CE5?logo=kubernetes&logoColor=white">
+  <img alt="Azure" src="https://img.shields.io/badge/Azure-0078D4?logo=microsoftazure&logoColor=white">
+  <img alt="GitHub Actions" src="https://img.shields.io/badge/GitHub_Actions-2088FF?logo=githubactions&logoColor=white">
+</p>
+
+<p align="center">
+  <a href="https://github.com/MarcosFso/cobraai/actions/workflows/billing.yml"><img alt="billing-service" src="https://github.com/MarcosFso/cobraai/actions/workflows/billing.yml/badge.svg"></a>
+  <a href="https://github.com/MarcosFso/cobraai/actions/workflows/report.yml"><img alt="report-service" src="https://github.com/MarcosFso/cobraai/actions/workflows/report.yml/badge.svg"></a>
+  <a href="https://github.com/MarcosFso/cobraai/actions/workflows/notification.yml"><img alt="notification-service" src="https://github.com/MarcosFso/cobraai/actions/workflows/notification.yml/badge.svg"></a>
+  <a href="https://github.com/MarcosFso/cobraai/actions/workflows/web.yml"><img alt="web" src="https://github.com/MarcosFso/cobraai/actions/workflows/web.yml/badge.svg"></a>
+  <img alt="Licença MIT" src="https://img.shields.io/badge/licen%C3%A7a-MIT-blue">
+</p>
+
+![Painel do CobraAí](docs/screenshots/02-painel.jpg)
+
+## Para quem está avaliando (30 segundos)
+
+| | |
+|---|---|
+| **O que é** | Sistema de cobranças multiempresa: emite cobranças, repete as mensais, mostra quem tende a atrasar, prevê o caixa de 3 meses e abre o WhatsApp do cliente com a mensagem pronta. |
+| **Por que é diferente** | Não é um CRUD. Três serviços em três linguagens conversam por **eventos do Kafka**, com *outbox* transacional, consumidores idempotentes e ordem garantida por chave. |
+| **Está no ar?** | Sim, com HTTPS, numa VM do Azure que liga sozinha quando alguém entra: [cobraai-wake.vercel.app](https://cobraai-wake.vercel.app). |
+| **É testado?** | Cerca de **140 testes automatizados** + cerca de **100 verificações de ponta a ponta** contra o sistema no ar, com CI no GitHub Actions. |
+| **Onde olhar o código** | O coração está em [`services/billing`](services/billing) (outbox, JWT, concorrência) e em [`contracts/events.md`](contracts/events.md) (o contrato dos eventos). |
+
+| Habilidade | Onde está a prova |
+|---|---|
+| **Java e Spring Boot** | `services/billing`: Spring Security com JWT, JPA, Flyway, bloqueio otimista, 51 testes com PostgreSQL real (Testcontainers) |
+| **Kafka e sistemas orientados a eventos** | Outbox, idempotência, ordem por chave e reconstrução dos relatórios a partir dos eventos ([decisões](#decisões-técnicas-a-parte-interessante)) |
+| **Segurança e multiempresa** | A empresa vem do token, nunca do pedido; um teste com duas empresas e tokens forjados confere que nada vaza em nenhum serviço |
+| **Docker e DevOps** | Compose de produção com limite de memória por contêiner, Caddy com HTTPS, manifestos Kubernetes, CI por serviço |
+| **Nuvem (Azure) e custo** | VM de 4 GB, identidade gerenciada, desligamento automático por inatividade e função serverless que a liga sob demanda |
+| **Python, Node e React** | Serviço de relatórios (FastAPI + Redis), serviço de avisos (Fastify + KafkaJS) e o site (React + TypeScript) |
+| **Produto** | Cobrança recorrente, equipe com papéis, score de risco explicável e previsão de caixa |
 
 ## Demonstração ao vivo
 
@@ -28,8 +74,6 @@ previsão de caixa e risco por cliente. Também dá para criar a conta de uma em
 > O servidor roda em créditos gratuitos de estudante e **desliga sozinho depois de 3 horas sem uso**; o primeiro acesso
 > depois disso espera cerca de 1 minuto. Se algo não abrir, os prints abaixo e o [guia de uso](docs/GUIA-DE-USO.md)
 > mostram o sistema funcionando.
-
-![Painel do CobraAí](docs/screenshots/02-painel.jpg)
 
 ## Como avaliar em 5 minutos
 
@@ -181,7 +225,7 @@ Quanto dura o crédito depende de quantas vezes alguém usa por mês (valores ca
 | **Intenso**: alguém usa a cada poucas horas, sempre ligada | 730 h | cerca de US$ 44 | **cerca de 2,3 meses** |
 
 Para um projeto de portfólio durante uma busca de emprego, o esperado é entre **6 e 10 meses**. Esses números são estimativas:
-o gasto real aparece em *Gerenciamento de custos* no portal do Azure, e há um alerta de orçamento configurado para avisar
+o gasto real aparece em *Gerenciamento de custos* no portal do Azure, e dá para configurar um alerta de orçamento para avisar
 antes de o crédito acabar. Robôs da internet não contam como uso: só pedidos reais ao sistema mantêm a máquina ligada.
 
 **Quando o crédito acabar**, a máquina para e o link da página de entrada deixa de ligar o sistema. O plano é: este

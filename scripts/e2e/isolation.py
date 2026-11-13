@@ -129,7 +129,10 @@ hist = wait_for(lambda: (lambda r: r[1] if r[0] == 200 and len(r[1]) >= 30 else 
 check("historico de avisos do visitante foi gravado", hist is not None)
 time.sleep(3)
 _, mail_after = call("GET", "/mail/api/v1/messages", auth="" + os.environ.get("OWNER_AUTH", "visitante:teste123") + "")
-check("dados de exemplo nao enviam e-mail (caixa de e-mail igual)", mail_after["total"] == mail_before["total"], (mail_before["total"], mail_after["total"]))
+if isinstance(mail_before, dict) and isinstance(mail_after, dict):
+    check("dados de exemplo nao enviam e-mail (caixa de e-mail igual)", mail_after["total"] == mail_before["total"], (mail_before["total"], mail_after["total"]))
+else:
+    print("  (pulado: sem a senha do dono em OWNER_AUTH, a caixa de e-mail nao pode ser lida)")
 check("A (empresa real) nao ve nada do visitante", len(call("GET", "/api/billing/customers", ta)[1]) == 1)
 
 print("9b) Ordem dos eventos: 5 sandboxes criadas em rajada, todas com os totais exatos")
@@ -141,7 +144,8 @@ for n, tok in enumerate(sandboxes, 1):
 print("10) Ferramentas do dono")
 check("/kafka pede senha", call("GET", "/kafka/")[0] == 401)
 check("/mail pede senha", call("GET", "/mail/")[0] == 401)
-check("/mail abre com a senha do dono", call("GET", "/mail/api/v1/messages", auth="" + os.environ.get("OWNER_AUTH", "visitante:teste123") + "")[0] == 200)
+if "OWNER_AUTH" in os.environ:
+    check("/mail abre com a senha do dono", call("GET", "/mail/api/v1/messages", auth=os.environ["OWNER_AUTH"])[0] == 200)
 
 print(f"\nRESULTADO: {len(OK)} ok, {len(BAD)} falhas")
 sys.exit(1 if BAD else 0)

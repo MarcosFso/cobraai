@@ -1,20 +1,30 @@
-# CobraAí (English)
+<p align="center"><img src="web/public/favicon.svg" alt="CobraAí logo" width="96" height="96"></p>
 
-> The main README is in Portuguese: [README.md](README.md). This is the original English technical write-up.
-> **Live demo:** https://cobraai-wake.vercel.app (always up; it wakes the server in about a minute if it is asleep, then press the visitor button). It is a portfolio demo: do not enter real customer data.
+<h1 align="center">CobraAí</h1>
 
-Microservices with Java, Node.js, Python and Kafka. Small businesses issue invoices, track payments and notify
-customers. Built to practice event-driven architecture, not because a system this small needs four services
-(it could be one, and I know that).
+<p align="center"><b>Invoicing without spreadsheets.</b><br>
+A billing system for small businesses, built as an <b>event-driven microservices</b> architecture<br>
+(Java + Kafka + Python + Node + React) and running in the cloud with HTTPS.</p>
 
-## Two versions
+<p align="center"><a href="https://cobraai-wake.vercel.app"><img alt="Live demo" src="https://img.shields.io/badge/%F0%9F%9A%80_Live_demo-click_here-2ea44f?style=for-the-badge"></a></p>
 
-| | Where | Stack | Purpose |
-|---|---|---|---|
-| **Web version** (live demo) | [`web/`](web/README.md) | React + TypeScript on Vercel, Supabase (PostgreSQL, Auth, RLS, pg_cron) | A real product anyone can try: login, test user, one company per account. Runs on free plans. |
-| **Microservices version** | `services/`, `web/` (same site, `VITE_BACKEND=rest`) | Java 21 / Spring Boot, Node.js / TypeScript, Python / FastAPI, Kafka, Redis, Docker Compose, Kubernetes manifests | Event-driven architecture: transactional outbox, idempotent consumers, replayable reports. Runs locally with one command. |
+> The main README is in Portuguese: [README.md](README.md). This is the English version.
 
-The microservices version runs online on one small Azure VM (HTTPS, 2 GB of memory): see [deploy/azure/GUIA-AZURE.md](deploy/azure/GUIA-AZURE.md) and [deploy/](deploy/README.md).
+![CobraAí dashboard](docs/screenshots/02-painel.jpg)
+
+## For reviewers (30 seconds)
+
+| | |
+|---|---|
+| **What it is** | A multi-company billing system: issues invoices, repeats the monthly ones, scores each customer's default risk, forecasts the next 3 months of cash, and opens the customer's WhatsApp with the message ready. |
+| **Why it is not just a CRUD** | Three services in three languages talk through **Kafka events**, with a transactional outbox, idempotent consumers and per-key ordering. |
+| **Is it live?** | Yes, with HTTPS, on an Azure VM that wakes up when someone arrives: [cobraai-wake.vercel.app](https://cobraai-wake.vercel.app). |
+| **Is it tested?** | About **140 automated tests** plus about **100 end-to-end checks** against the running system, with CI on GitHub Actions. |
+| **Where to look** | [`services/billing`](services/billing) (outbox, JWT, concurrency) and [`contracts/events.md`](contracts/events.md) (the event contract). |
+
+**Try the demo.** Open the link above. If the system is asleep, press the button and wait about 1 minute (it runs on
+free student credit and stops itself after 3 hours without use). Then press **Entrar como visitante** (visitor): you get
+a private sample company. It is a portfolio demo: do not enter real customer data. The interface is in Portuguese.
 
 ## Microservices version
 
@@ -218,3 +228,13 @@ managed Kafka and databases are not free. The complete demo runs locally.
 Real payments (PIX/boleto), tax invoices, e-mail verification and password reset by e-mail (an administrator can reset it, see above), and automatic WhatsApp sending
 (the WhatsApp button opens a prepared chat; sending on its own needs the paid WhatsApp Business API). The Supabase
 version has no teams, monthly charges, risk score or forecast yet (the Java version has all of them).
+
+## Author
+
+Marcos Ribeiro, information systems student (Brazil), looking for an internship or junior developer role.
+
+* LinkedIn: [linkedin.com/in/marcos-ribeiro-dev](https://linkedin.com/in/marcos-ribeiro-dev)
+* E-mail: [mfilhofso@gmail.com](mailto:mfilhofso@gmail.com)
+* GitHub: [@MarcosFso](https://github.com/MarcosFso)
+
+License: [MIT](LICENSE).

@@ -196,6 +196,9 @@ Container Registry.
 
 ## Publicação (Azure, em 2 GB de memória)
 
+<details>
+<summary>Ver como foi publicado</summary>
+
 A mesma pilha roda numa máquina virtual do Azure, atrás do Caddy (HTTPS automático). Foi dimensionada para poucos
 recursos: cada contêiner tem um limite de memória, as JVMs usam heaps pequenos e o Kafka UI fica desligado até ser
 preciso. Medido com carga (cerca de 85 usuários ao mesmo tempo): **1,2 GB** no pico, sem nenhum serviço morto. Há um
@@ -204,7 +207,12 @@ script que desliga a máquina sozinha quando ninguém usa o site, para o crédit
 A página que acorda o servidor está em [`wake/`](wake/) (Vercel, funções que usam uma credencial de uma só permissão: ligar
 essa máquina). Guias: [Azure](deploy/azure/GUIA-AZURE.md), [Oracle Cloud](deploy/GUIA-ORACLE.md), [visão geral do deploy](deploy/README.md).
 
+</details>
+
 ## Quanto tempo a demonstração fica no ar (custo real)
+
+<details>
+<summary>Ver a conta de custo e duração</summary>
 
 A demonstração roda numa máquina virtual do Azure paga com o **crédito de US$ 100 do plano de estudante** (válido por 12 meses,
 até 11/11/2027). Para o crédito render, a máquina **desliga sozinha depois de 3 horas sem uso** e a página
@@ -231,6 +239,8 @@ antes de o crédito acabar. Robôs da internet não contam como uso: só pedidos
 **Quando o crédito acabar**, a máquina para e o link da página de entrada deixa de ligar o sistema. O plano é: este
 repositório continua público, com os [prints](docs/GUIA-DE-USO.md) e os testes; o sistema roda com um comando em qualquer
 computador com Docker; e a versão leve com Supabase e Vercel (`web/`), que não tem prazo, passa a ser o link principal.
+
+</details>
 
 ## Limitações e próximos passos
 
@@ -266,4 +276,10 @@ docs                    Guia de uso com imagens
 
 ## Autor
 
-Marcos Ribeiro ([@MarcosFso](https://github.com/MarcosFso)). Licença [MIT](LICENSE).
+Marcos Ribeiro, estudante de Sistemas de Informação, em busca de estágio ou vaga júnior em desenvolvimento de software.
+
+* LinkedIn: [linkedin.com/in/marcos-ribeiro-dev](https://linkedin.com/in/marcos-ribeiro-dev)
+* E-mail: [mfilhofso@gmail.com](mailto:mfilhofso@gmail.com)
+* GitHub: [@MarcosFso](https://github.com/MarcosFso)
+
+Licença [MIT](LICENSE).

@@ -1,4 +1,4 @@
-import { config, getToken, powerState, startVm } from './_azure.js';
+import { config, describe, getToken, powerState, startVm } from './_azure.js';
 
 let lastStart = 0;
 const COOLDOWN_MS = 60_000; // one start request per minute per server instance: repeated clicks do nothing extra
@@ -24,6 +24,7 @@ export default async function handler(req, res) {
     await startVm(cfg, token);
     return res.status(200).json({ state: 'starting' });
   } catch (error) {
-    return res.status(error.code === 'NOT_CONFIGURED' ? 503 : 502).json({ error: error.code === 'NOT_CONFIGURED' ? 'A página ainda não foi configurada.' : 'Não consegui ligar a máquina.' });
+    const { code, body } = describe(error);
+    return res.status(code).json(body);
   }
 }

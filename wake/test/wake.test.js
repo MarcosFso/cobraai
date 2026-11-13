@@ -108,7 +108,8 @@ describe('wake page backend', () => {
       const r = res();
       await status({}, r);
       assert.equal(r.code, 502);
-      assert.ok(!JSON.stringify(r.body).includes('401'));
+      assert.equal(r.body.step, 'login'); // says WHICH step failed, so the owner knows what to fix
+      assert.ok(!JSON.stringify(r.body).includes('TOKEN') && !JSON.stringify(r.body).includes('"s"'), 'never leaks a secret');
     } finally { azure.restore(); }
   });
 

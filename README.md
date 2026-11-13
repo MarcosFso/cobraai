@@ -284,7 +284,7 @@ docs                    Guia de uso com imagens
 
 ## Documentação
 
-[Guia de uso](docs/GUIA-DE-USO.md) · [Eventos do Kafka](contracts/events.md) · [Deploy no Azure](deploy/azure/GUIA-AZURE.md) · [Versão em inglês](README.en.md)
+[Guia de uso](docs/GUIA-DE-USO.md) · [Eventos do Kafka](contracts/events.md) · [Deploy no Azure](deploy/azure/GUIA-AZURE.md)
 
 ## Autor
 

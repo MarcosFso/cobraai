@@ -1,0 +1,8 @@
+{
+  "name": "cobraai-wake",
+  "private": true,
+  "type": "module",
+  "description": "Pagina que acorda a maquina do CobraAi (Azure) quando alguem quer usar a demonstracao.",
+  "scripts": { "test": "node --test" },
+  "engines": { "node": ">=20" }
+}

@@ -166,6 +166,8 @@ browser --Authorization: Bearer <token>--> billing-service | report-service | no
 | `services/report` | Python 3.12, FastAPI, aiokafka, Redis | pytest, fakeredis |
 | `web` | React 18, TypeScript, Vite, TanStack Query, Recharts (one site for both versions) | Vitest |
 
+The public endpoints `/auth/login`, `/auth/register` and `/auth/demo` are rate limited per address (10, 10 and 20 calls per minute, HTTP 429 with `Retry-After`; in memory, so a multi-instance setup would need Redis). Event contract: [`contracts/invoice-event.schema.json`](contracts/invoice-event.schema.json).
+
 Billing API: `POST /auth/register`, `POST /auth/login`, `POST /auth/demo`, `GET /auth/me`, `POST /customers`,
 `GET /customers`, `GET /customers/{id}`, `POST /invoices`, `GET /invoices?status=OPEN`, `POST /invoices/{id}/pay`,
 `POST /invoices/{id}/cancel`, `POST /recurring`, `GET /recurring`, `POST /recurring/{id}/stop`, `GET /team`, `POST /team`,

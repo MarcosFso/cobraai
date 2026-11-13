@@ -19,7 +19,7 @@ A billing system for small businesses, built as an <b>event-driven microservices
 | **What it is** | A multi-company billing system: issues invoices, repeats the monthly ones, scores each customer's default risk, forecasts the next 3 months of cash, and opens the customer's WhatsApp with the message ready. |
 | **Why it is not just a CRUD** | Three services in three languages talk through **Kafka events**, with a transactional outbox, idempotent consumers and per-key ordering. |
 | **Is it live?** | Yes, with HTTPS, on an Azure VM that wakes up when someone arrives: [cobraai-wake.vercel.app](https://cobraai-wake.vercel.app). |
-| **Is it tested?** | About **140 automated tests** plus about **100 end-to-end checks** against the running system, with CI on GitHub Actions. |
+| **Is it tested?** | About **140 automated tests** plus **99 end-to-end checks** against the running system, with CI on GitHub Actions. |
 | **Where to look** | [`services/billing`](services/billing) (outbox, JWT, concurrency) and [`contracts/events.md`](contracts/events.md) (the event contract). |
 
 **Try the demo.** Open the link above. If the system is asleep, press the button and wait about 1 minute (it runs on

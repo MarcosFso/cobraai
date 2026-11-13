@@ -1,0 +1,21 @@
+# Atualizações automáticas de dependências (abre um PR quando sai versão nova ou correção de segurança).
+version: 2
+updates:
+  - package-ecosystem: maven
+    directory: /services/billing
+    schedule: { interval: weekly }
+  - package-ecosystem: pip
+    directory: /services/report
+    schedule: { interval: weekly }
+  - package-ecosystem: npm
+    directory: /services/notification
+    schedule: { interval: weekly }
+  - package-ecosystem: npm
+    directory: /web
+    schedule: { interval: weekly }
+  - package-ecosystem: github-actions
+    directory: /
+    schedule: { interval: weekly }
+  - package-ecosystem: docker
+    directory: /services/billing
+    schedule: { interval: weekly }

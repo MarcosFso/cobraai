@@ -59,3 +59,8 @@ app:
   demo:
     max-age-hours: 24
     cleanup-cron: "0 15 * * * *"
+  rate-limit:
+    # per address and per minute, for the public auth endpoints (slows down password guessing and mass sign-ups)
+    login-per-minute: 10
+    register-per-minute: 10
+    demo-per-minute: 20

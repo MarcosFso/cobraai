@@ -49,7 +49,7 @@ Sistema de cobranças para pequenas empresas, feito como uma arquitetura de <b>m
 
 | Habilidade | Onde está a prova |
 |---|---|
-| **Java e Spring Boot** | `services/billing`: Spring Security com JWT, JPA, Flyway, bloqueio otimista, 51 testes com PostgreSQL real (Testcontainers) |
+| **Java e Spring Boot** | `services/billing`: Spring Security com JWT, JPA, Flyway, bloqueio otimista, limite de tentativas no login, 57 testes com PostgreSQL real (Testcontainers) |
 | **Kafka e sistemas orientados a eventos** | Outbox, idempotência, ordem por chave e reconstrução dos relatórios a partir dos eventos ([decisões](#decisões-técnicas-a-parte-interessante)) |
 | **Segurança e multiempresa** | A empresa vem do token, nunca do pedido; um teste com duas empresas e tokens forjados confere que nada vaza em nenhum serviço |
 | **Docker e DevOps** | Compose de produção com limite de memória por contêiner, Caddy com HTTPS, manifestos Kubernetes, CI por serviço |
@@ -158,8 +158,19 @@ pelo serviço Java) vale nos três serviços.
   vencido agora; a previsão pesa cada cobrança pela chance de ser paga. Cada número pode ser explicado ao usuário.
 * **Concorrência.** Dois cliques simultâneos em "pagar" são barrados por bloqueio otimista (`@Version`); a rotina das
   cobranças mensais usa a mesma coluna para nunca emitir o mesmo mês duas vezes.
+* **Limite de tentativas.** `/auth/login`, `/auth/register` e `/auth/demo` aceitam poucas chamadas por minuto por endereço
+  (10, 10 e 20) e respondem `429` com `Retry-After`. O contador fica na memória do serviço: com várias instâncias, ele
+  teria de ir para o Redis.
+* **Segredo do JWT compartilhado (HS256).** Os três serviços usam o mesmo segredo, o que é simples, mas quem vazar o
+  segredo em qualquer um deles forja tokens. O caminho de produção é RS256: o Java assina com a chave privada e os
+  outros dois só verificam com a chave pública, que não dá poder de criar token. Não foi feito aqui para manter o
+  projeto simples de rodar.
+* **Publicador do outbox com uma instância só.** Ele lê o lote pendente e espera o Kafka confirmar antes de marcar como
+  enviado, então segura a transação por alguns segundos se o Kafka estiver lento. Para várias instâncias o certo é
+  `SELECT ... FOR UPDATE SKIP LOCKED`, que deixa cada uma pegar linhas diferentes sem esperar a outra.
 
-As regras de cada serviço e o formato dos eventos estão em [contracts/events.md](contracts/events.md).
+As regras de cada serviço e o formato dos eventos estão em [contracts/events.md](contracts/events.md) e em
+[JSON Schema](contracts/invoice-event.schema.json).
 
 ## Rodar na sua máquina
 
@@ -184,28 +195,28 @@ Abra o site e clique em **Entrar como visitante**. O passo a passo, com imagens,
 
 | Camada | Quantidade | Como rodar |
 |---|---|---|
-| Java (unidade e integração com PostgreSQL real, via Testcontainers) | 51 | `cd services/billing && mvn verify` |
+| Java (unidade e integração com PostgreSQL real, via Testcontainers) | 57 | `cd services/billing && mvn verify` |
 | Python (regras, Redis falso, API) | 34 | `cd services/report && pip install -r requirements-dev.txt && pytest` |
 | Node (consumidor, idempotência, API) | 13 | `cd services/notification && npm ci && npm test` |
 | Site (telas completas sobre dados de exemplo) | 32 | `cd web && npm ci && npm test` |
 | Página que acorda o servidor (Azure simulado) | 10 | `cd wake && node --test` |
-| **Ponta a ponta, com tudo no ar** (isolamento, equipe, risco) | cerca de 100 verificações | [`scripts/e2e`](scripts/e2e/README.md) |
+| **Ponta a ponta, com tudo no ar** (isolamento, equipe, risco) | 99 verificações | [`scripts/e2e`](scripts/e2e/README.md) |
 
 O GitHub Actions roda os testes de cada serviço quando a pasta dele muda. Na `main`, publica a imagem Docker no GitHub
 Container Registry.
 
-## Publicação (Azure, em 2 GB de memória)
+## Publicação (Azure)
 
 <details>
 <summary>Ver como foi publicado</summary>
 
-A mesma pilha roda numa máquina virtual do Azure, atrás do Caddy (HTTPS automático). Foi dimensionada para poucos
-recursos: cada contêiner tem um limite de memória, as JVMs usam heaps pequenos e o Kafka UI fica desligado até ser
+A mesma pilha roda numa máquina virtual do Azure, atrás do Caddy (HTTPS automático). A máquina tem 4 GB, mas a pilha foi dimensionada para caber em 2 GB: cada contêiner tem um limite de memória, as JVMs usam heaps pequenos e o Kafka UI fica desligado até ser
 preciso. Medido com carga (cerca de 85 usuários ao mesmo tempo): **1,2 GB** no pico, sem nenhum serviço morto. Há um
 script que desliga a máquina sozinha quando ninguém usa o site, para o crédito render mais.
 
 A página que acorda o servidor está em [`wake/`](wake/) (Vercel, funções que usam uma credencial de uma só permissão: ligar
-essa máquina). Guias: [Azure](deploy/azure/GUIA-AZURE.md), [Oracle Cloud](deploy/GUIA-ORACLE.md), [visão geral do deploy](deploy/README.md).
+essa máquina). Guias: [Azure (o que está no ar)](deploy/azure/GUIA-AZURE.md), [visão geral do deploy](deploy/README.md) e, como
+alternativa gratuita para quem tem CNPJ, [Oracle Cloud](deploy/GUIA-ORACLE.md) (não usada aqui).
 
 </details>
 
@@ -249,7 +260,8 @@ Isto é um projeto de portfólio, e algumas coisas ficaram de fora de propósito
 * Sem **Pix, boleto ou nota fiscal**: a baixa de pagamento é manual.
 * **WhatsApp**: o botão abre uma conversa pronta; enviar sozinho exigiria a API paga do WhatsApp Business.
 * Falta **confirmação de e-mail** e **recuperação de senha por e-mail** (hoje o administrador redefine, ou o dono pelo
-  servidor). Também não há **limite de tentativas** no login e no cadastro.
+  servidor). O limite de tentativas existe (por endereço, na memória do serviço), mas não
+  bloqueia a conta de quem erra a senha.
 * A versão com Supabase e Vercel (`web/`) existe no código, mas ainda não está publicada e não tem equipe, cobranças
   mensais nem risco.
 * Próximos passos naturais: Pix com baixa automática, régua de cobrança automática (lembretes por e-mail antes e depois

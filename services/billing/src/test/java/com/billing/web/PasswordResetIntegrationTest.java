@@ -27,7 +27,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /** An administrator resets someone's password; the person must choose a new one before using anything else. */
-@SpringBootTest(properties = {"app.outbox.enabled=false", "app.topics.create=false"})
+@SpringBootTest(properties = {"app.outbox.enabled=false", "app.topics.create=false", "app.rate-limit.login-per-minute=100000", "app.rate-limit.register-per-minute=100000", "app.rate-limit.demo-per-minute=100000"})
 @AutoConfigureMockMvc
 @Testcontainers
 class PasswordResetIntegrationTest {

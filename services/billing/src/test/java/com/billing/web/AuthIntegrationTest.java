@@ -26,7 +26,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /** The whole HTTP layer with real security: login, tokens, and that one company never sees another's data. */
-@SpringBootTest(properties = {"app.outbox.enabled=false", "app.topics.create=false"})
+@SpringBootTest(properties = {"app.outbox.enabled=false", "app.topics.create=false", "app.rate-limit.login-per-minute=100000", "app.rate-limit.register-per-minute=100000", "app.rate-limit.demo-per-minute=100000"})
 @AutoConfigureMockMvc
 @Testcontainers
 class AuthIntegrationTest {

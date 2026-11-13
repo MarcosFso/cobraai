@@ -30,7 +30,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /** Several users per company, and monthly charges, through the real HTTP layer and security. */
-@SpringBootTest(properties = {"app.outbox.enabled=false", "app.topics.create=false"})
+@SpringBootTest(properties = {"app.outbox.enabled=false", "app.topics.create=false", "app.rate-limit.login-per-minute=100000", "app.rate-limit.register-per-minute=100000", "app.rate-limit.demo-per-minute=100000"})
 @AutoConfigureMockMvc
 @Testcontainers
 class TeamAndRecurringIntegrationTest {

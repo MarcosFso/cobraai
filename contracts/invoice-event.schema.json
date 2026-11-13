@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/MarcosFso/cobraai/contracts/invoice-event.schema.json",
+  "title": "InvoiceEvent",
+  "description": "Mensagem do tópico Kafka invoice.events (chave = invoiceId). Publicada só pelo billing-service, via outbox. Detalhes em events.md.",
+  "type": "object",
+  "required": ["eventId", "correlationId", "type", "occurredAt", "orgId", "invoiceId", "customerId", "customerName", "amountCents", "dueDate"],
+  "additionalProperties": true,
+  "properties": {
+    "eventId": { "type": "string", "format": "uuid", "description": "Único por mensagem; os consumidores guardam os já processados." },
+    "correlationId": { "type": "string", "description": "Nasce no pedido HTTP (X-Correlation-Id) e vai para os logs de todos os serviços." },
+    "type": { "enum": ["invoice.created", "invoice.paid", "invoice.overdue", "invoice.canceled"] },
+    "occurredAt": { "type": "string", "format": "date-time", "description": "Instante UTC da mudança." },
+    "orgId": { "type": "string", "format": "uuid", "description": "Empresa dona da cobrança. Evento sem orgId é ignorado." },
+    "invoiceId": { "type": "string", "format": "uuid" },
+    "customerId": { "type": "string", "format": "uuid" },
+    "customerName": { "type": "string", "minLength": 1 },
+    "customerEmail": { "type": ["string", "null"], "description": "Sem e-mail, o aviso por e-mail não é enviado." },
+    "amountCents": { "type": "integer", "minimum": 1, "description": "Centavos, inteiro. Nunca decimal." },
+    "dueDate": { "type": "string", "format": "date", "description": "Data de calendário, sem hora (America/Sao_Paulo)." },
+    "demo": { "type": "boolean", "default": false, "description": "Empresa descartável do modo visitante." },
+    "seed": { "type": "boolean", "default": false, "description": "Dado de exemplo: conta nos relatórios, mas não envia e-mail." }
+  }
+}

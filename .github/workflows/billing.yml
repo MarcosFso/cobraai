@@ -1,3 +1,4 @@
+# Roda só quando mudam os arquivos deste serviço (ou este próprio arquivo), para não gastar minutos de CI à toa.
 name: billing-service
 
 on:

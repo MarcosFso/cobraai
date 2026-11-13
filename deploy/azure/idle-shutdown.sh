@@ -3,8 +3,8 @@
 # A deallocated VM costs only its disk and static IP; start it again from the Azure portal (it comes back in 2-3 minutes
 # with the same address and the same data).
 #
-# "Used" = a request to /api/*, /mail or /kafka in the last IDLE_HOURS hours (health checks and the plain site page do
-# not count, because internet scanners hit those all day). Runs from cron every 10 minutes (see enable-idle-shutdown.sh).
+# "Used" = a request to /api/billing, /api/report, /api/notification, /mail or /kafka in the last IDLE_HOURS hours. Health
+# checks, the plain site page and made-up /api/... paths do not count, because internet scanners hit those all day. Runs from cron every 10 minutes (see enable-idle-shutdown.sh).
 #
 # It asks Azure to deallocate with the VM's own managed identity, which needs the role "Virtual Machine Contributor"
 # on the resource group. Without that role it only writes a line to the log and does nothing.
@@ -24,7 +24,7 @@ if [ "$UPTIME_S" -lt $((IDLE_HOURS * 3600)) ]; then
   exit 0
 fi
 
-HITS="$(sudo docker logs --since "${IDLE_HOURS}h" "$CADDY" 2>&1 | grep -E '"uri":"/(api|mail|kafka)' | grep -vc '/health' || true)"
+HITS="$(sudo docker logs --since "${IDLE_HOURS}h" "$CADDY" 2>&1 | grep -E '"uri":"/(api/(billing|report|notification)/|mail|kafka)' | grep -vc '/health' || true)"
 if [ "${HITS:-0}" -gt 0 ]; then
   log "active: ${HITS} requests in the last ${IDLE_HOURS} h"
   exit 0

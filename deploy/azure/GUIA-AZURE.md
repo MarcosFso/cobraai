@@ -33,14 +33,21 @@ $DC logs -f billing-service # ver o log de um serviço
 ```
 A senha das ferramentas do dono (`/mail` e `/kafka`) está em `~/billing-platform/deploy/.visitor-password`.
 
+## Quanto custa e quanto dura
+Máquina ligada: US$ 0,0526 por hora. Desligada: só disco e IP fixo, cerca de US$ 6 por mês. Com o desligamento por
+inatividade (3 horas), cada acesso custa cerca de US$ 0,17. O crédito de US$ 100 dura cerca de 10 meses com uso leve,
+6 com uso moderado e 2,3 se a máquina ficar ligada o tempo todo (e o crédito expira em 12 meses de qualquer jeito).
+A tabela completa está no [README](../../README.md#quanto-tempo-a-demonstração-fica-no-ar-custo-real).
+
 ## Parar para economizar crédito
 - **Pelo portal:** abra a máquina `billing` e clique em **Parar**. A máquina fica **desalocada** (sem cobrança de
   computação, só do disco e do IP fixo, uns US$ 5 por mês). **Iniciar** traz tudo de volta em 2 a 3 minutos, com o
   mesmo endereço e os mesmos dados.
 - **Nunca** desligue só com `shutdown` dentro do Linux: isso **não** para a cobrança.
 - **Sozinha, por inatividade:** `deploy/azure/idle-shutdown.sh` roda a cada 10 minutos (cron) e desaloca a máquina se
-  ninguém usar o site por 3 horas (conta pedidos a `/api`, `/mail` e `/kafka`; o `/health` e a página inicial não contam,
-  porque robôs da internet os visitam o dia todo). Ele nunca desliga nas primeiras 3 horas depois de ligar.
+  ninguém usar o site por 3 horas (conta pedidos a `/api/billing`, `/api/report`, `/api/notification`, `/mail` e `/kafka`;
+  o `/health`, a página inicial e caminhos inventados como `/api/admin` não contam, porque robôs da internet os visitam o
+  dia todo). Ele nunca desliga nas primeiras 3 horas depois de ligar.
   Para isso a máquina precisa da identidade gerenciada ligada e do papel **Colaborador da Máquina Virtual** na própria
   máquina (portal: máquina → Controle de acesso (IAM) → Adicionar atribuição de função → Colaborador da Máquina Virtual →
   Identidade gerenciada → Máquina virtual → `billing`). É o menor escopo possível: a máquina só pode mexer nela mesma.

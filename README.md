@@ -31,6 +31,16 @@ previsão de caixa e risco por cliente. Também dá para criar a conta de uma em
 
 ![Painel do CobraAí](docs/screenshots/02-painel.jpg)
 
+## Como avaliar em 5 minutos
+
+1. Abra **https://cobraai-wake.vercel.app**. Se o sistema estiver em repouso, clique em **Abrir o CobraAí** e espere cerca de 1 minuto.
+2. Clique em **Entrar como visitante**. Você recebe uma empresa de exemplo só sua (clientes, cobranças e histórico de meses).
+3. No **Painel**, veja o gráfico, a **previsão de caixa** (recebido, previsto e "se todos pagassem em dia") e os **clientes que merecem atenção**.
+4. Em **Cobranças**, clique em **Nova cobrança**, escolha **Todo mês** e veja a cobrança aparecer na lista **Mensais**.
+5. Em **Clientes**, veja o selo de **risco** de cada um e o botão verde que abre o **WhatsApp** com a mensagem pronta.
+6. Para testar a **equipe**, saia, escolha **Criar conta → Criar minha empresa** e abra **Equipe** (o visitante não tem equipe, de propósito).
+7. Para ver o código: o serviço Java em [`services/billing`](services/billing), os eventos em [`contracts/events.md`](contracts/events.md) e os testes de ponta a ponta em [`scripts/e2e`](scripts/e2e).
+
 ## O que o sistema faz
 
 | | |
@@ -148,6 +158,34 @@ script que desliga a máquina sozinha quando ninguém usa o site, para o crédit
 
 A página que acorda o servidor está em [`wake/`](wake/) (Vercel, funções que usam uma credencial de uma só permissão: ligar
 essa máquina). Guias: [Azure](deploy/azure/GUIA-AZURE.md), [Oracle Cloud](deploy/GUIA-ORACLE.md), [visão geral do deploy](deploy/README.md).
+
+## Quanto tempo a demonstração fica no ar (custo real)
+
+A demonstração roda numa máquina virtual do Azure paga com o **crédito de US$ 100 do plano de estudante** (válido por 12 meses,
+até 11/11/2027). Para o crédito render, a máquina **desliga sozinha depois de 3 horas sem uso** e a página
+[`wake/`](wake/) a liga de novo em cerca de 1 minuto quando alguém aparece. Desligada, ela não cobra computação.
+
+| | Valor |
+|---|---|
+| Máquina ligada (B2als_v2, 2 vCPU, 4 GB) | US$ 0,0526 por hora |
+| Disco e IP fixo, ligada ou desligada | cerca de US$ 6 por mês |
+| Cada acesso (liga, e fica ligada até 3 horas depois do último uso) | cerca de US$ 0,17 |
+
+Quanto dura o crédito depende de quantas vezes alguém usa por mês (valores calculados com o preço de tabela do Azure):
+
+| Uso | Horas ligada por mês | Custo por mês | Duração do crédito de US$ 100 |
+|---|---|---|---|
+| **Leve**: recrutadores esporádicos, cerca de 20 acessos | cerca de 70 h | cerca de US$ 10 | **cerca de 10 meses** (o crédito expira em 12) |
+| **Moderado**: cerca de 2 acessos por dia | cerca de 210 h | cerca de US$ 17 | **cerca de 6 meses** |
+| **Intenso**: alguém usa a cada poucas horas, sempre ligada | 730 h | cerca de US$ 44 | **cerca de 2,3 meses** |
+
+Para um projeto de portfólio durante uma busca de emprego, o esperado é entre **6 e 10 meses**. Esses números são estimativas:
+o gasto real aparece em *Gerenciamento de custos* no portal do Azure, e há um alerta de orçamento configurado para avisar
+antes de o crédito acabar. Robôs da internet não contam como uso: só pedidos reais ao sistema mantêm a máquina ligada.
+
+**Quando o crédito acabar**, a máquina para e o link da página de entrada deixa de ligar o sistema. O plano é: este
+repositório continua público, com os [prints](docs/GUIA-DE-USO.md) e os testes; o sistema roda com um comando em qualquer
+computador com Docker; e a versão leve com Supabase e Vercel (`web/`), que não tem prazo, passa a ser o link principal.
 
 ## Limitações e próximos passos
 

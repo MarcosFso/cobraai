@@ -10,7 +10,7 @@ A billing system for small businesses, built as an <b>event-driven microservices
 
 > The main README is in Portuguese: [README.md](README.md). This is the English version.
 
-![CobraAí dashboard](docs/screenshots/02-painel.jpg)
+![CobraAí demo: dashboard, cash forecast, new monthly invoice and customers with risk](docs/demo.gif)
 
 ## For reviewers (30 seconds)
 

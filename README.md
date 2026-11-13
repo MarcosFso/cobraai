@@ -35,7 +35,7 @@ Sistema de cobranças para pequenas empresas, feito como uma arquitetura de <b>m
   <img alt="Licença MIT" src="https://img.shields.io/badge/licen%C3%A7a-MIT-blue">
 </p>
 
-![Painel do CobraAí](docs/screenshots/02-painel.jpg)
+![Demonstração do CobraAí: painel, previsão de caixa, nova cobrança mensal e clientes com risco](docs/demo.gif)
 
 ## Para quem está avaliando (30 segundos)
 

@@ -70,7 +70,7 @@ previsão de caixa e risco por cliente. Também dá para criar a conta de uma em
 | **Front-end** | React 18, TypeScript, Vite, TanStack Query, Recharts, tema claro e escuro, celular |
 | **Dados** | PostgreSQL (migrações versionadas), Redis com AOF |
 | **Infra** | Docker e Docker Compose, Caddy (HTTPS automático), Kubernetes (manifestos), GitHub Actions |
-| **Nuvem** | Azure (máquina virtual de 4 GB, plano de estudante), IP fixo, desligamento por inatividade |
+| **Nuvem** | Azure (máquina virtual de 4 GB, plano de estudante), IP fixo, desligamento por inatividade; Vercel (página de entrada com funções que ligam a máquina) |
 
 ## Arquitetura
 
@@ -144,6 +144,7 @@ Abra o site e clique em **Entrar como visitante**. O passo a passo, com imagens,
 | Python (regras, Redis falso, API) | 34 | `cd services/report && pip install -r requirements-dev.txt && pytest` |
 | Node (consumidor, idempotência, API) | 13 | `cd services/notification && npm ci && npm test` |
 | Site (telas completas sobre dados de exemplo) | 32 | `cd web && npm ci && npm test` |
+| Página que acorda o servidor (Azure simulado) | 10 | `cd wake && node --test` |
 | **Ponta a ponta, com tudo no ar** (isolamento, equipe, risco) | cerca de 100 verificações | [`scripts/e2e`](scripts/e2e/README.md) |
 
 O GitHub Actions roda os testes de cada serviço quando a pasta dele muda. Na `main`, publica a imagem Docker no GitHub
@@ -211,6 +212,7 @@ deploy                  Docker Compose de produção, Caddy, scripts de instala�
 k8s                     Manifestos de Kubernetes (cluster local com kind)
 contracts               Formato dos eventos do Kafka
 scripts/e2e             Testes de ponta a ponta contra o sistema no ar
+wake                    Página no Vercel que liga o servidor do Azure sob demanda (e testes)
 docs                    Guia de uso com imagens
 ```
 

@@ -1,6 +1,6 @@
 # One command to run everything:  docker compose up --build
 # Only some pieces?  docker compose up postgres kafka billing-service
-name: billing-platform
+name: cobraai
 
 services:
   # ---------- infrastructure ----------

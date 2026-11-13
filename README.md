@@ -1,219 +1,178 @@
-# Billing Platform
+# CobraAí
 
-Microservices with Java, Node.js, Python and Kafka. Small businesses issue invoices, track payments and notify
-customers. Built to practice event-driven architecture, not because a system this small needs four services
-(it could be one, and I know that).
+**Cobranças sem planilha, pagamentos sem susto.** Sistema de cobranças para pequenas empresas: emite cobranças, repete
+as mensais, acompanha quem pagou, mostra quem tende a atrasar e abre o WhatsApp do cliente com a mensagem pronta.
 
-## Two versions
+[![billing-service](https://github.com/MarcosFso/cobraai/actions/workflows/billing.yml/badge.svg)](https://github.com/MarcosFso/cobraai/actions/workflows/billing.yml)
+[![report-service](https://github.com/MarcosFso/cobraai/actions/workflows/report.yml/badge.svg)](https://github.com/MarcosFso/cobraai/actions/workflows/report.yml)
+[![notification-service](https://github.com/MarcosFso/cobraai/actions/workflows/notification.yml/badge.svg)](https://github.com/MarcosFso/cobraai/actions/workflows/notification.yml)
+[![web](https://github.com/MarcosFso/cobraai/actions/workflows/web.yml/badge.svg)](https://github.com/MarcosFso/cobraai/actions/workflows/web.yml)
+![Licença MIT](https://img.shields.io/badge/licen%C3%A7a-MIT-blue)
 
-| | Where | Stack | Purpose |
-|---|---|---|---|
-| **Web version** (live demo) | [`web/`](web/README.md) | React + TypeScript on Vercel, Supabase (PostgreSQL, Auth, RLS, pg_cron) | A real product anyone can try: login, test user, one company per account. Runs on free plans. |
-| **Microservices version** | `services/`, `web/` (same site, `VITE_BACKEND=rest`) | Java 21 / Spring Boot, Node.js / TypeScript, Python / FastAPI, Kafka, Redis, Docker Compose, Kubernetes manifests | Event-driven architecture: transactional outbox, idempotent consumers, replayable reports. Runs locally with one command. |
+## Demonstração ao vivo
 
-Live demo: _add the Vercel link here after the first deploy_ (use the **visitor** button to log in without signing up).
+### https://cobraai.chilecentral.cloudapp.azure.com
 
-The microservices version can also be hosted online for free on one Oracle Cloud Always Free VM (HTTPS, shared login, nightly reset): see [deploy/](deploy/README.md).
+Clique em **Entrar como visitante**: você ganha uma empresa de exemplo só sua, com clientes, cobranças, gráficos,
+previsão de caixa e risco por cliente. Também dá para criar a conta de uma empresa de verdade (e-mail e senha).
 
-## Microservices version
+> **Aviso: isto é uma demonstração de portfólio.** Não cadastre dados reais de clientes (CPF, CNPJ, telefone ou
+> e-mail de pessoas reais), nem use uma senha que você usa em outro lugar. As empresas de visitante são apagadas
+> sozinhas depois de 24 horas, e nenhum e-mail ou mensagem real é enviado.
+>
+> O servidor roda em créditos gratuitos de estudante e pode ser desligado quando ninguém está usando. Se o link não
+> abrir, os prints abaixo e o [guia de uso](docs/GUIA-DE-USO.md) mostram o sistema funcionando.
+
+![Painel do CobraAí](docs/screenshots/02-painel.jpg)
+
+## O que o sistema faz
+
+| | |
+|---|---|
+| **Cobranças** | Emissão com valor em centavos, vencimento, filtros e busca. Pagar, cancelar e marcar como vencida sozinha. |
+| **Cobrar pelo WhatsApp** | Cada cliente tem telefone validado. Um botão abre a conversa com a mensagem pronta (simpática antes do vencimento, firme depois). |
+| **Cobranças mensais** | "Todo mês": a primeira sai na hora e as próximas saem sozinhas 5 dias antes de cada vencimento, respeitando o dia (31 vira 28 em fevereiro). |
+| **Várias pessoas por empresa** | Funcionário cria a conta, o administrador libera pelo e-mail e ele passa a ver os dados da empresa. Papéis de administrador e funcionário. |
+| **Senha sem e-mail** | O administrador gera uma senha temporária; a pessoa é obrigada a trocá-la no próximo acesso. |
+| **Risco e previsão de caixa** | Score de 0 a 100 por cliente a partir do histórico de pagamentos e uma previsão de caixa para 3 meses, com regras que dá para explicar. |
+| **Avisos aos clientes** | Cada cobrança criada, paga ou vencida gera um e-mail (numa caixa de teste, nesta demonstração). |
+| **Painel** | Recebido, em aberto, atrasado, inadimplência, gráfico por mês e cobranças por situação, atualizados sozinhos. |
+
+| | |
+|---|---|
+| ![Cobranças mensais](docs/screenshots/15-cobrancas-mensais.jpg) | ![Previsão de caixa](docs/screenshots/18-previsao-de-caixa.jpg) |
+| ![Clientes com risco](docs/screenshots/19-clientes-com-risco.jpg) | ![Equipe](docs/screenshots/14-equipe.jpg) |
+
+## Tecnologias
+
+| Área | O que foi usado |
+|---|---|
+| **Java 21** | Spring Boot 3.4, Spring Security com JWT, JPA, Flyway, Spring Kafka, JUnit 5 e Testcontainers |
+| **Kafka** | Padrão *outbox*, entrega pelo menos uma vez com consumidores idempotentes, ordem por chave, reprocessamento |
+| **Python 3.12** | FastAPI, aiokafka, Redis, PyJWT, pytest |
+| **Node 22 e TypeScript** | Fastify, KafkaJS, SQLite, Vitest |
+| **Front-end** | React 18, TypeScript, Vite, TanStack Query, Recharts, tema claro e escuro, celular |
+| **Dados** | PostgreSQL (migrações versionadas), Redis com AOF |
+| **Infra** | Docker e Docker Compose, Caddy (HTTPS automático), Kubernetes (manifestos), GitHub Actions |
+| **Nuvem** | Azure (máquina virtual de 4 GB, plano de estudante), IP fixo, desligamento por inatividade |
+
+## Arquitetura
 
 ```mermaid
 flowchart LR
-  UI[Dashboard<br/>React + TypeScript] -- REST --> B
-  UI -- REST --> R
-  B[billing-service<br/>Java 21 / Spring Boot] -- writes --> PG[(PostgreSQL)]
-  B -- outbox publisher --> K{{Kafka}}
-  K -- invoice.events --> N[notification-service<br/>Node 22 / TypeScript]
-  K -- invoice.events --> R[report-service<br/>Python / FastAPI]
-  N --> M[Mailpit<br/>fake inbox]
-  N --> S[(SQLite history)]
+  UI[Site<br/>React + TypeScript] -- REST + JWT --> B
+  UI -- REST + JWT --> R
+  UI -- REST + JWT --> N
+  B[billing-service<br/>Java 21 / Spring Boot] -- grava --> PG[(PostgreSQL)]
+  B -- publica o outbox --> K{{Kafka<br/>invoice.events}}
+  K --> N[notification-service<br/>Node 22 / TypeScript]
+  K --> R[report-service<br/>Python / FastAPI]
+  N --> M[Mailpit<br/>caixa de e-mail de teste]
+  N --> S[(SQLite)]
   R --> RD[(Redis)]
 ```
 
-Only `billing-service` writes to PostgreSQL and publishes events. The other services just react to them, so each one
-can fail or be replaced without taking the others down. No service reads another service's database.
+Só o serviço de cobranças escreve no PostgreSQL e publica eventos. Os outros dois apenas reagem a eles, então cada
+um pode cair ou ser trocado sem derrubar os demais, e nenhum serviço lê o banco de outro. Um mesmo login (JWT assinado
+pelo serviço Java) vale nos três serviços.
 
-## Run it
+## Decisões técnicas (a parte interessante)
 
-Requires Docker.
+* **Dinheiro em centavos** (`BIGINT`), nunca decimal, para não ter erro de arredondamento.
+* **Transactional Outbox.** A cobrança e o seu evento são gravados na mesma transação. Um publicador lê o que ainda não
+  foi enviado e manda ao Kafka, então nenhum evento se perde se o serviço cair entre "salvar" e "enviar".
+* **Entrega pelo menos uma vez + consumidores idempotentes.** O mesmo evento pode chegar duas vezes; cada consumidor
+  guarda os `eventId` que já processou. No serviço de relatórios, a marca de "processado" e os números mudam numa
+  única transação do Redis.
+* **Um tópico só (`invoice.events`), chave = `invoiceId`.** O Kafka só garante ordem dentro de uma partição. Na primeira
+  versão havia um tópico por tipo de evento e o painel mostrava números errados, porque o "vencida" podia chegar antes do
+  "criada". Com um tópico e a chave da cobrança, os eventos de uma cobrança chegam em ordem.
+* **Relatórios reconstruíveis.** Os tópicos guardam as mensagens para sempre e, se o Redis for perdido, `python -m
+  app.rebuild` refaz todos os números a partir dos eventos.
+* **Isolamento entre empresas.** A empresa vem **do token**, nunca do pedido. Pedir a cobrança de outra empresa responde
+  `404`, como se ela não existisse. Um teste com duas empresas, tokens adulterados e tokens assinados com outro segredo
+  confere que nada vaza no Java, no Kafka, nos relatórios e nos avisos.
+* **Quem sai perde o acesso na hora.** O serviço Java confere empresa e papel no banco a cada pedido; os outros dois
+  confiam no token, que dura 4 horas.
+* **Previsão por regras, não por modelo.** O score soma o peso de pagar atrasado, a média de dias de atraso e o que está
+  vencido agora; a previsão pesa cada cobrança pela chance de ser paga. Cada número pode ser explicado ao usuário.
+* **Concorrência.** Dois cliques simultâneos em "pagar" são barrados por bloqueio otimista (`@Version`); a rotina das
+  cobranças mensais usa a mesma coluna para nunca emitir o mesmo mês duas vezes.
+
+As regras de cada serviço e o formato dos eventos estão em [contracts/events.md](contracts/events.md).
+
+## Rodar na sua máquina
+
+Precisa só do Docker.
 
 ```bash
 docker compose up --build
 ```
 
-| What | URL |
+| O quê | Endereço |
 |---|---|
-| Site (log in, or press "Entrar como visitante") | http://localhost:5173 |
-| Billing API | http://localhost:8080 |
-| Report API | http://localhost:8000/docs |
-| Notification API | http://localhost:3000/notifications (needs the login token) |
-| Fake inbox (Mailpit): shows the e-mails of every company | http://localhost:8025 |
-| Kafka UI: shows the messages of every company | http://localhost:8090 |
+| Site | http://localhost:5173 |
+| API de cobranças | http://localhost:8080 |
+| API de relatórios | http://localhost:8000/docs |
+| Caixa de e-mail de teste (Mailpit) | http://localhost:8025 |
+| Kafka UI | http://localhost:8090 |
 
-Try it: press **Entrar como visitante** (a private sandbox company with sample data), or create your own company account.
-Add a customer (a valid CPF such as `529.982.247-25`, plus a WhatsApp number), issue an invoice, mark it as paid, then look
-at the numbers on the dashboard, the e-mail in Mailpit and the messages in Kafka UI. A step-by-step guide with
-screenshots is in [docs/GUIA-DE-USO.md](docs/GUIA-DE-USO.md).
+Abra o site e clique em **Entrar como visitante**. O passo a passo, com imagens, está em
+[docs/GUIA-DE-USO.md](docs/GUIA-DE-USO.md).
 
-Low on memory? Start only part of the stack: `docker compose up postgres kafka billing-service`.
+## Testes
 
-## Design decisions (the interesting part)
-
-* **Money in cents** (`amountCents`, `BIGINT`), never a decimal, to avoid rounding errors.
-* **Transactional Outbox.** An invoice and its event are written in the same database transaction. A polling
-  publisher sends unpublished rows to Kafka afterwards, so an event is never lost if the service crashes between
-  "save" and "send". Nothing else talks to Kafka, not even the daily overdue job.
-* **At-least-once delivery + idempotent consumers.** The publisher may send an event twice; every consumer stores
-  the `eventId`s it processed and ignores repeats. In the report service the "processed" mark and the numbers are
-  updated in one Redis transaction.
-* **Ordering by key.** The Kafka key is the `invoiceId`, so all events of one invoice stay in order.
-* **Report numbers are rebuildable.** Topics have infinite retention (`retention.ms=-1`) and Redis runs with AOF. If
-  the numbers are lost, `python -m app.rebuild` wipes them (including the processed-ids list) and replays the topics
-  from the beginning.
-* **State per invoice in the report service.** Events do not carry the previous status, so the report service keeps
-  each invoice's status. That is how `OVERDUE -> PAID` leaves the overdue total and `CANCELED` leaves the open total.
-* **Business rules** are documented in the status table below and covered by tests; due dates are calendar days
-  evaluated in `America/Sao_Paulo`; concurrent "pay" clicks are blocked by optimistic locking (`@Version`).
-* **Correlation id.** `X-Correlation-Id` enters at the HTTP request, is copied into the event, and appears in the
-  JSON logs of every service. Logs never contain CPF/CNPJ or full e-mail addresses.
-
-### Invoice status rules
-
-| From | Action | Result |
+| Camada | Quantidade | Como rodar |
 |---|---|---|
-| OPEN | pay | PAID (`invoice.paid`) |
-| OPEN | cancel | CANCELED (`invoice.canceled`) |
-| OPEN | daily job, due date passed | OVERDUE (`invoice.overdue`) |
-| OVERDUE | pay | PAID (`invoice.paid`) |
-| OVERDUE | cancel | CANCELED (`invoice.canceled`) |
-| PAID / CANCELED | pay or cancel | refused, `409 Conflict` |
+| Java (unidade e integração com PostgreSQL real, via Testcontainers) | 51 | `cd services/billing && mvn verify` |
+| Python (regras, Redis falso, API) | 34 | `cd services/report && pip install -r requirements-dev.txt && pytest` |
+| Node (consumidor, idempotência, API) | 13 | `cd services/notification && npm ci && npm test` |
+| Site (telas completas sobre dados de exemplo) | 32 | `cd web && npm ci && npm test` |
+| **Ponta a ponta, com tudo no ar** (isolamento, equipe, risco) | cerca de 100 verificações | [`scripts/e2e`](scripts/e2e/README.md) |
 
-An invoice with a due date in the past, a non-positive amount, or an invalid CPF/CNPJ is refused with `400`.
-Event format: [contracts/events.md](contracts/events.md).
+O GitHub Actions roda os testes de cada serviço quando a pasta dele muda. Na `main`, publica a imagem Docker no GitHub
+Container Registry.
 
-## Accounts and data isolation
+## Publicação (Azure, em 2 GB de memória)
 
-Every company has its own login (e-mail and password) and sees only its own data.
+A mesma pilha roda numa máquina virtual do Azure, atrás do Caddy (HTTPS automático). Foi dimensionada para poucos
+recursos: cada contêiner tem um limite de memória, as JVMs usam heaps pequenos e o Kafka UI fica desligado até ser
+preciso. Medido com carga (cerca de 85 usuários ao mesmo tempo): **1,2 GB** no pico, sem nenhum serviço morto. Há um
+script que desliga a máquina sozinha quando ninguém usa o site, para o crédito render mais.
+
+Guias: [Azure](deploy/azure/GUIA-AZURE.md), [Oracle Cloud](deploy/GUIA-ORACLE.md), [visão geral do deploy](deploy/README.md).
+
+## Limitações e próximos passos
+
+Isto é um projeto de portfólio, e algumas coisas ficaram de fora de propósito:
+
+* Sem **Pix, boleto ou nota fiscal**: a baixa de pagamento é manual.
+* **WhatsApp**: o botão abre uma conversa pronta; enviar sozinho exigiria a API paga do WhatsApp Business.
+* Falta **confirmação de e-mail** e **recuperação de senha por e-mail** (hoje o administrador redefine, ou o dono pelo
+  servidor). Também não há **limite de tentativas** no login e no cadastro.
+* A versão com Supabase e Vercel (`web/`) existe no código, mas ainda não está publicada e não tem equipe, cobranças
+  mensais nem risco.
+* Próximos passos naturais: Pix com baixa automática, régua de cobrança automática (lembretes por e-mail antes e depois
+  do vencimento) e monitoramento (Prometheus e Grafana).
+
+## Estrutura
 
 ```
-browser --POST /auth/login--> billing-service ... checks the BCrypt password, signs a token (JWT, HS256) with the company id
-browser --Authorization: Bearer <token>--> billing-service | report-service | notification-service
-                                            each one verifies the signature with the shared secret and reads the company from the token
+services/billing        Java 21 / Spring Boot: cobranças, clientes, login, equipe, mensais, outbox
+services/report         Python / FastAPI: totais, gráficos, risco e previsão, a partir dos eventos
+services/notification   Node / TypeScript: avisos por e-mail a partir dos eventos
+web                     React + TypeScript: o site (e uma versão alternativa com Supabase)
+deploy                  Docker Compose de produção, Caddy, scripts de instalação (Azure e Oracle)
+k8s                     Manifestos de Kubernetes (cluster local com kind)
+contracts               Formato dos eventos do Kafka
+scripts/e2e             Testes de ponta a ponta contra o sistema no ar
+docs                    Guia de uso com imagens
 ```
 
-* **One login for three services.** The billing service signs the token; the report (Python) and notification (Node)
-  services only verify it, so there is no user database to share and no session stored anywhere.
-* **The company comes from the token, never from the request.** Controllers pass it to the services, and every query
-  filters by it. Asking for another company's invoice answers `404`, as if it did not exist.
-* **Events carry `orgId`.** Redis keys and the notification history are kept per company, and a test with two companies
-  and a forged token checks that nothing leaks across billing, Kafka, reports and notifications.
-* **"Entrar como visitante"** creates a private sandbox company with sample data (events flagged `seed`: counted by the
-  report, but no e-mail is sent). Sandboxes are capped and deleted after 24 hours.
-* **Several users per company.** A person creates an ordinary account without a company name; an administrator of the
-  company types that e-mail on the **Equipe** screen and the account starts seeing the company's data. Roles: `ADMIN`
-  (manages people) and `MEMBER`. The company and role are confirmed against the database on every request to the billing
-  service, so a removed person loses access immediately; the report and notification services trust the token until it
-  expires (4 hours, `JWT_TTL_HOURS`).
-* **Monthly charges.** "Todo mês" on a new invoice creates the first invoice now; a scheduled job issues the next ones
-  5 days before each due date, through the same outbox as any invoice. The day is kept (a charge for the 31st goes to
-  the 28th in February and back to the 31st), a version column stops two runs from issuing a month twice, and a stopped
-  charge issues nothing more.
-* **Password reset without e-mail.** A company administrator resets a member's password on the **Equipe** screen: the
-  system shows a temporary password once, the old password and any open session stop working at once, and at the next
-  login the person sees "o administrador mudou a sua senha" and nothing else opens until they choose a new one (the
-  token issued in the meantime carries no company, so all three services refuse it). An administrator cannot reset
-  themselves; for the owner of a company, `bash deploy/reset-password.sh email@company.com` does it from the server.
-  Anyone can also change their own password in **Equipe → Minha senha**.
-* **Default-risk score and cash forecast** (report service, Python). From the same Kafka events the service keeps each
-  customer's payment history in Redis (how many invoices, how many paid more than 3 days late, total days late). A
-  transparent rule gives each customer a 0-100 score (LOW / MEDIUM / HIGH): share paid late, average delay, and what is
-  overdue now. The forecast weighs every unpaid invoice by the chance of it being paid and places it in the month the
-  customer usually pays, for this month and the next two. Rules instead of a trained model on purpose: every number can
-  be explained to the user. `GET /reports/risk` and `GET /reports/forecast`; formulas in `services/report/app/risk.py`
-  (the site keeps a copy for the sample data, with the same test cases). After upgrading, run the rebuild below once so
-  the history of old events is counted.
-* **WhatsApp**: customers have an optional phone number (validated as a Brazilian number); a button on each open or
-  overdue invoice opens a WhatsApp chat with a ready-made message (free "click to chat" link, no API).
-* The owner tools (Kafka UI and Mailpit) show every company's data, so in the production setup they sit behind a
-  separate password that is not published.
+## Documentação
 
-## Screenshots
+[Guia de uso](docs/GUIA-DE-USO.md) · [Eventos do Kafka](contracts/events.md) · [Deploy no Azure](deploy/azure/GUIA-AZURE.md) · [Versão em inglês](README.en.md)
 
-| | |
-|---|---|
-| ![Login](docs/screenshots/01-login.jpg) | ![Dashboard](docs/screenshots/02-painel.jpg) |
-| ![Invoices](docs/screenshots/03-cobrancas.jpg) | ![Customers](docs/screenshots/05-clientes.jpg) |
-| ![Monthly charges](docs/screenshots/15-cobrancas-mensais.jpg) | ![Team](docs/screenshots/14-equipe.jpg) |
-| ![Cash forecast](docs/screenshots/18-previsao-de-caixa.jpg) | ![Risk per customer](docs/screenshots/19-clientes-com-risco.jpg) |
+## Autor
 
-## Services
-
-| Service | Stack | Tests |
-|---|---|---|
-| `services/billing` | Java 21, Spring Boot 3.4, JPA, Flyway, Spring Kafka | JUnit 5, Testcontainers |
-| `services/notification` | Node 22, TypeScript, Fastify, KafkaJS, SQLite | Vitest |
-| `services/report` | Python 3.12, FastAPI, aiokafka, Redis | pytest, fakeredis |
-| `web` | React 18, TypeScript, Vite, TanStack Query, Recharts (one site for both versions) | Vitest |
-
-Billing API: `POST /auth/register`, `POST /auth/login`, `POST /auth/demo`, `GET /auth/me`, `POST /customers`,
-`GET /customers`, `GET /customers/{id}`, `POST /invoices`, `GET /invoices?status=OPEN`, `POST /invoices/{id}/pay`,
-`POST /invoices/{id}/cancel`, `POST /recurring`, `GET /recurring`, `POST /recurring/{id}/stop`, `GET /team`, `POST /team`,
-`PUT /team/{id}/role`, `POST /team/{id}/reset-password`, `DELETE /team/{id}`, `POST /auth/password`. Report API: `GET /reports/summary`, `GET /reports/monthly?year=`, `GET /reports/overdue`, `GET /reports/risk`,
-`GET /reports/forecast`.
-Notification API: `GET /notifications`. All of them except `/health` and the three `/auth` entry points need the
-login token. See [Accounts and data isolation](#accounts-and-data-isolation).
-
-## Develop and test
-
-```bash
-# billing (needs Java 21 and Docker for the integration test)
-cd services/billing && mvn verify
-
-# notification
-cd services/notification && npm ci && npm run lint && npm test
-
-# report
-cd services/report && pip install -r requirements-dev.txt && pytest
-
-# site (React, used by both versions)
-cd web && npm ci && npm run lint && npm test && npm run build
-```
-
-CI: one GitHub Actions workflow per service (only runs when that folder changes): lint, tests, and on `main` a
-Docker image published to the GitHub Container Registry.
-
-Rebuild the report numbers:
-
-```bash
-docker compose stop report-service
-docker compose run --rm report-service python -m app.rebuild
-docker compose start report-service
-```
-
-## Kubernetes (optional)
-
-Runs the four services in a local [kind](https://kind.sigs.k8s.io/) cluster; PostgreSQL, Redis, Kafka and Mailpit
-stay in Compose. Pods reach them through `host.docker.internal` (works on Docker Desktop; on Linux add a host
-mapping for it).
-
-```bash
-docker compose up -d postgres redis kafka mailpit
-docker build -t billing-service:local services/billing
-docker build -t notification-service:local services/notification
-docker build -t report-service:local services/report
-docker build -t dashboard:local --build-arg VITE_BACKEND=rest --build-arg VITE_BILLING_URL=http://localhost:8080 --build-arg VITE_REPORT_URL=http://localhost:8000 --build-arg VITE_NOTIFICATION_URL=http://localhost:3000 web
-kind create cluster --name billing --config k8s/kind-config.yaml
-for i in billing-service notification-service report-service dashboard; do kind load docker-image $i:local --name billing; done
-kubectl apply -f k8s/
-```
-
-## AWS (optional)
-
-Static dashboard on S3 + CloudFront, billing on App Runner or a small EC2. Create an AWS Budgets alert first:
-managed Kafka and databases are not free. The complete demo runs locally.
-
-## Out of scope for the MVP
-
-Real payments (PIX/boleto), tax invoices, e-mail verification and password reset by e-mail (an administrator can reset it, see above), and automatic WhatsApp sending
-(the WhatsApp button opens a prepared chat; sending on its own needs the paid WhatsApp Business API). The Supabase
-version has no teams, monthly charges, risk score or forecast yet (the Java version has all of them).
+Marcos Ribeiro ([@MarcosFso](https://github.com/MarcosFso)). Licença [MIT](LICENSE).

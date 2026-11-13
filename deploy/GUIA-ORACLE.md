@@ -21,7 +21,7 @@ Custo: zero (plano "Always Free" da Oracle). Tempo: cerca de 40 minutos na prime
      (O plano grátis permite até 4 OCPUs e 24 GB no total. 12 GB sobra.)
 4. **Networking**: deixe a opção de criar uma rede nova e confirme **Assign a public IPv4 address**.
 5. **Add SSH keys**: escolha **Generate a key pair for me** e clique em **Save private key**. Guarde esse arquivo
-   (`.key`) em um lugar seguro, por exemplo `C:\Users\mfilh\.ssh\oracle.key`. Sem ele você não entra no servidor.
+   (`.key`) em um lugar seguro, por exemplo `%USERPROFILE%\.ssh\oracle.key`. Sem ele você não entra no servidor.
 6. Clique em **Create**. Se aparecer **"Out of host capacity"**, é falta de vaga da Oracle naquele momento: tente de
    novo em algumas horas (ou outro dia). É comum e não é erro seu.
 7. Quando o estado ficar **Running**, anote o **Public IP address** da instância.
@@ -45,8 +45,8 @@ Custo: zero (plano "Always Free" da Oracle). Tempo: cerca de 40 minutos na prime
 No seu PC, abra o PowerShell e entre no servidor (troque o IP e o caminho da chave):
 
 ```powershell
-icacls C:\Users\mfilh\.ssh\oracle.key /inheritance:r /grant:r "$($env:USERNAME):(R)"
-ssh -i C:\Users\mfilh\.ssh\oracle.key ubuntu@IP-DA-ORACLE
+icacls %USERPROFILE%\.ssh\oracle.key /inheritance:r /grant:r "$($env:USERNAME):(R)"
+ssh -i %USERPROFILE%\.ssh\oracle.key ubuntu@IP-DA-ORACLE
 ```
 
 (O `icacls` só ajusta a permissão do arquivo da chave, que o SSH do Windows exige. Rode uma vez.)
@@ -56,8 +56,8 @@ Já dentro do servidor:
 ```bash
 sudo apt-get update && sudo apt-get install -y git gh
 gh auth login            # GitHub.com → HTTPS → "Login with a web browser": abra o link, digite o código
-gh repo clone MarcosFso/billing-platform
-cd billing-platform
+gh repo clone <seu-usuario>/<nome-do-repositorio>
+cd cobraai
 bash deploy/oracle/bootstrap.sh marcos-cobrancas.duckdns.org
 ```
 
@@ -66,7 +66,7 @@ A primeira instalação demora uns 15 minutos (compila o Java e baixa as imagens
 isso não são públicas). **Anote essa senha e não a divulgue.** Se quiser escolher a sua, rode com ela no fim:
 `bash deploy/oracle/bootstrap.sh marcos-cobrancas.duckdns.org MinhaSenha123`.
 
-Se o repositório já for público, em vez do `gh` basta `git clone https://github.com/MarcosFso/billing-platform.git`.
+Se o repositório já for público, em vez do `gh` basta `git clone https://github.com/<seu-usuario>/<nome-do-repositorio>.git`.
 
 ## Parte 6: conferir
 
@@ -81,7 +81,7 @@ Para mostrar a arquitetura numa entrevista, abra (pedirá usuário `visitante` e
   memória (a pilha foi feita para caber em 2 GB). Ligue antes de mostrar e desligue depois:
 
 ```bash
-cd ~/billing-platform
+cd ~/cobraai
 DC="sudo docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml"
 $DC --profile tools up -d kafka-ui     # ligar (leva cerca de 30 segundos)
 $DC stop kafka-ui                      # desligar
@@ -90,8 +90,8 @@ $DC stop kafka-ui                      # desligar
 ## No dia a dia
 
 ```bash
-ssh -i C:\Users\mfilh\.ssh\oracle.key ubuntu@IP     # entrar
-cd billing-platform
+ssh -i %USERPROFILE%\.ssh\oracle.key ubuntu@IP     # entrar
+cd cobraai
 DC="sudo docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml"
 $DC ps                          # o que está rodando
 $DC logs -f billing-service     # ver o log de um serviço
@@ -105,7 +105,7 @@ As empresas dos visitantes são apagadas sozinhas depois de 24 horas. As contas 
 Entre no servidor e rode (troque o e-mail):
 
 ```bash
-cd ~/billing-platform
+cd ~/cobraai
 bash deploy/reset-password.sh seu-email@empresa.com
 ```
 

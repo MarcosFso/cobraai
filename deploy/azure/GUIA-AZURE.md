@@ -20,7 +20,7 @@ deixe em "Nenhuma redundância de infraestrutura necessária".
 
 ## Entrar na máquina
 ```powershell
-ssh -i C:\Users\mfilh\.ssh\billing_key.pem azureuser@57.156.70.42
+ssh -i $env:USERPROFILE\.ssh\billing_key.pem azureuser@<IP-PUBLICO-DA-MAQUINA>
 ```
 A chave `billing_key.pem` só existe no seu computador: o Azure não guarda cópia. Faça uma cópia de segurança dela.
 
@@ -51,10 +51,10 @@ A senha das ferramentas do dono (`/mail` e `/kafka`) está em `~/billing-platfor
 ## Atualizar o código
 O repositório é privado, então o código foi enviado do computador para a máquina:
 ```powershell
-cd C:\Users\mfilh\OneDrive\Desktop\billing-platform
+cd <pasta-do-projeto>
 git archive --format=tar.gz -o $env:TEMP\bp.tgz HEAD
-scp -i $env:USERPROFILE\.ssh\billing_key.pem $env:TEMP\bp.tgz azureuser@57.156.70.42:/home/azureuser/bp.tgz
-ssh -i $env:USERPROFILE\.ssh\billing_key.pem azureuser@57.156.70.42 "tar -xzf ~/bp.tgz -C ~/billing-platform && cd ~/billing-platform && sudo docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml up -d --build"
+scp -i $env:USERPROFILE\.ssh\billing_key.pem $env:TEMP\bp.tgz azureuser@<IP-PUBLICO-DA-MAQUINA>:/home/azureuser/bp.tgz
+ssh -i $env:USERPROFILE\.ssh\billing_key.pem azureuser@<IP-PUBLICO-DA-MAQUINA> "tar -xzf ~/bp.tgz -C ~/billing-platform && cd ~/billing-platform && sudo docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml up -d --build"
 ```
 
 ## Alerta de gasto

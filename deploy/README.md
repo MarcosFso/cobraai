@@ -46,7 +46,7 @@ The detailed, click-by-click guide (Portuguese) is in [GUIA-ORACLE.md](GUIA-ORAC
 ## Useful commands (on the server)
 
 ```bash
-cd ~/billing-platform
+cd ~/cobraai
 DC="sudo docker compose --env-file deploy/.env -f deploy/docker-compose.prod.yml"
 $DC ps                         # what is running
 $DC logs -f billing-service    # follow one service

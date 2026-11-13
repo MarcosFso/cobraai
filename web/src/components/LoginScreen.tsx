@@ -45,7 +45,7 @@ export function LoginScreen() {
     <div className="login">
       <aside className="hero">
         <div className="hero-inner">
-          <div className="brand light"><span className="logo">₢</span> Cobranças</div>
+          <div className="brand light"><span className="logo">C</span> CobraAí</div>
           <h1>Cobranças sem planilha, <em>pagamentos sem susto.</em></h1>
           <p>Uma plataforma simples para pequenas empresas emitirem cobranças, acompanharem pagamentos e avisarem clientes.</p>
           <ul>

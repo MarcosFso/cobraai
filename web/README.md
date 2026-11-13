@@ -1,4 +1,4 @@
-# Billing Platform: web version
+# CobraAí: web version
 
 The online version of the project, built to run for free on **Vercel + Supabase**. A React + TypeScript single page
 app talks directly to a Postgres database; the business rules and the security live in the database.

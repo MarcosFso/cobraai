@@ -199,7 +199,7 @@ Outras regras:
 **Para o dono do sistema (esqueceu a própria senha).** No servidor da Oracle:
 
 ```bash
-cd ~/billing-platform
+cd ~/cobraai
 bash deploy/reset-password.sh seu-email@empresa.com
 ```
 

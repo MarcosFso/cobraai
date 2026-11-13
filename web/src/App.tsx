@@ -71,7 +71,7 @@ function Workspace({ email, dark, toggleTheme }: { email: string; dark: boolean;
   return (
     <div className="shell">
       <aside className="sidebar">
-        <div className="brand"><span className="logo">₢</span> Cobranças</div>
+        <div className="brand"><span className="logo">C</span> CobraAí</div>
         <nav aria-label="Seções">
           {tabs.map((item) => (
             <button key={item.id} className={`nav-item${tab === item.id ? ' active' : ''}`} onClick={() => setTab(item.id)} aria-current={tab === item.id ? 'page' : undefined}>

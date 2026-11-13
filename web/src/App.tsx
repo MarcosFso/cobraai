@@ -27,12 +27,19 @@ const TABS: { id: string; label: string; icon: ReactNode }[] = [
 export function App() {
   const [theme, toggleTheme] = useTheme(); // applies the saved or system theme as soon as the app starts
   const [session, setSession] = useState<AuthSession | null | undefined>(undefined); // undefined = still loading
+  const queryClient = useQueryClient();
 
   useEffect(() => {
     if (!isConfigured) return;
-    void auth.getSession().then(setSession);
-    return auth.onChange(setSession);
-  }, []);
+    const update = (next: AuthSession | null) => {
+      // Leaving (or losing) the session wipes what was loaded, so the next person on this browser never sees,
+      // even for a moment, the customers and invoices of the previous company.
+      if (!next) queryClient.clear();
+      setSession(next);
+    };
+    void auth.getSession().then(update);
+    return auth.onChange(update);
+  }, [queryClient]);
 
   if (!isConfigured) {
     return (

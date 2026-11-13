@@ -16,7 +16,7 @@ export function parseReaisToCents(text: string): number | null {
   const match = /^(\d+)(?:\.(\d{1,2}))?$/.exec(normalized);
   if (!match) return null;
   const cents = Number(match[1]) * 100 + Number((match[2] ?? '').padEnd(2, '0') || 0);
-  return cents > 0 ? cents : null;
+  return cents > 0 && Number.isSafeInteger(cents) ? cents : null;
 }
 
 /** "2026-11-10" -> "10/11/2026" (no Date object, so no time zone surprises). */

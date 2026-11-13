@@ -49,7 +49,7 @@
       </ul>
 
       <p class="small" id="note">
-        A demonstração fica desligada quando ninguém está usando, para economizar. Acordar leva de 2 a 4 minutos.
+        A demonstração fica desligada quando ninguém está usando, para economizar. Acordar leva cerca de 1 a 2 minutos.
         <br />Não cadastre dados reais de clientes: é um projeto de portfólio.
       </p>
       <p class="small"><a href="https://github.com/MarcosFso/cobraai" style="color: var(--muted)">Ver o código no GitHub</a></p>
@@ -60,7 +60,7 @@
       let timer = null;
       let startedAt = 0;
 
-      const set = (title, text) => { $('title').textContent = title; $('text').textContent = text; };
+      const set = (title, text) => { $('title').textContent = title; $('text').textContent = text; $('text').className = ''; };
       const mark = (n) => ['s1', 's2', 's3'].forEach((id, i) => { $(id).className = i + 1 < n ? 'done' : i + 1 === n ? 'on' : ''; });
 
       async function status() {

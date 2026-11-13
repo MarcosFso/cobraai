@@ -20,8 +20,14 @@ export default async function handler(req, res) {
     if (state === 'running' || state === 'starting') return res.status(200).json({ state });
     if (state === 'deallocating' || state === 'stopping') return res.status(200).json({ state, message: 'A máquina ainda está desligando. Tente de novo em um minuto.' });
     if (Date.now() - lastStart < COOLDOWN_MS) return res.status(200).json({ state: 'starting' });
+    const previousStart = lastStart;
     lastStart = Date.now();
-    await startVm(cfg, token);
+    try {
+      await startVm(cfg, token);
+    } catch (error) {
+      lastStart = previousStart; // a failed start must not block the next click for a minute
+      throw error;
+    }
     return res.status(200).json({ state: 'starting' });
   } catch (error) {
     const { code, body } = describe(error);
